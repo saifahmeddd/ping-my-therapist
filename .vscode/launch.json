@@ -1,0 +1,13 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Ping My Therapist",
+      "request": "launch",
+      "type": "dart",
+      "program": "lib/main.dart",
+      "preLaunchTask": "Start Medium Phone Emulator",
+      "toolArgs": ["-d", "android"]
+    }
+  ]
+}

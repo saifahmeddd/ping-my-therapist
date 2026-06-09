@@ -1,0 +1,33 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "Start Medium Phone Emulator",
+      "type": "shell",
+      "command": "bash",
+      "args": ["${workspaceFolder}/scripts/start_emulator.sh"],
+      "problemMatcher": [],
+      "presentation": {
+        "reveal": "always",
+        "panel": "dedicated",
+        "focus": true
+      }
+    },
+    {
+      "label": "Flutter Run (Android)",
+      "type": "shell",
+      "command": "bash",
+      "args": ["${workspaceFolder}/scripts/run.sh"],
+      "problemMatcher": [],
+      "presentation": {
+        "reveal": "always",
+        "panel": "dedicated",
+        "focus": true
+      },
+      "group": {
+        "kind": "build",
+        "isDefault": true
+      }
+    }
+  ]
+}
