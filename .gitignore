@@ -1,5 +1,8 @@
 # Environment (keep .env.example tracked)
 .env
+web/
+all-assets/
+all-screens/
 
 # Miscellaneous
 *.class
@@ -47,5 +50,7 @@ app.*.map.json
 /android/app/profile
 /android/app/release
 
-
-/web/
+# Firebase / secrets (use local copies; firebase_options.dart is generated)
+**/google-services.json
+**/GoogleService-Info.plist
+**/*firebase-adminsdk*.json

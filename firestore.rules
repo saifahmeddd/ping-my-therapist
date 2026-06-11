@@ -1,0 +1,290 @@
+rules_version = '2';
+
+// ============================================================================
+// Firestore Security Rules — Ping My Therapist / moodie
+//
+// Role model:
+//   - patient  : authenticated Firebase user who owns a `users/{uid}` document
+//                (no custom claims required; identity is inferred from Auth UID)
+//   - therapist: authenticated Firebase user with custom claim { role: "therapist" }
+//                (set by the portal backend via /api/auth/set-claims)
+//   - admin    : authenticated Firebase user with custom claim { role: "admin" }
+//
+// Collections written by the Flutter mobile app (direct client writes):
+//   users, onboarding_responses, chat_sessions, journal_entries, mood_checkins
+//
+// Collections written by the therapist portal backend (Firebase Admin SDK):
+//   therapists, patients, appointments, services, moodEntries, clinicalNotes,
+//   riskAlerts, messageThreads, messages, notifications, auditLogs
+// ============================================================================
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ------------------------------------------------------------------
+    // Helper functions
+    // ------------------------------------------------------------------
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isOwner(uid) {
+      return isSignedIn() && request.auth.uid == uid;
+    }
+
+    function isTherapist() {
+      return isSignedIn() &&
+             request.auth.token.get('role', '') == 'therapist';
+    }
+
+    function isVerifiedTherapist() {
+      return isTherapist() &&
+             request.auth.token.get('verified', false) == true;
+    }
+
+    function isAdmin() {
+      return isSignedIn() &&
+             request.auth.token.get('role', '') == 'admin';
+    }
+
+    // Returns true when the therapist owns the patients/{patientId} document
+    // (i.e. the document's therapistUid field matches the caller's UID).
+    function therapistOwnsPatient(patientId) {
+      return isTherapist() &&
+             get(/databases/$(database)/documents/patients/$(patientId))
+               .data.therapistUid == request.auth.uid;
+    }
+
+    // ------------------------------------------------------------------
+    // users
+    //   - Patients read/write their own profile.
+    //   - Therapists may read the profile of any patient they are linked to
+    //     (therapistUid field on the users doc matches the caller).
+    //   - Admins can read all.
+    //   - The portal backend uses Admin SDK so it bypasses these rules.
+    // ------------------------------------------------------------------
+    match /users/{uid} {
+      allow read:  if isOwner(uid)
+                   || isAdmin()
+                   || (isTherapist() && resource.data.get('therapistUid', '') == request.auth.uid);
+      allow create: if isOwner(uid);
+      // Patients can update their own profile; therapists may only write the
+      // therapistUid field (used when linking via the portal).
+      allow update: if isOwner(uid)
+                    || isAdmin()
+                    || (isTherapist() && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['therapistUid']));
+      allow delete: if isAdmin();
+    }
+
+    // ------------------------------------------------------------------
+    // onboarding_responses
+    //   - Patients create/read/update their own response doc.
+    //   - Therapists can read responses for their linked patients.
+    //   - Admins can read all.
+    // ------------------------------------------------------------------
+    match /onboarding_responses/{docId} {
+      allow read:  if isSignedIn() && (
+                       resource.data.uid == request.auth.uid
+                       || isAdmin()
+                       || (isTherapist() &&
+                           get(/databases/$(database)/documents/users/$(resource.data.uid))
+                             .data.get('therapistUid', '') == request.auth.uid)
+                     );
+      allow create: if isSignedIn() && request.resource.data.uid == request.auth.uid;
+      allow update: if isSignedIn() && resource.data.uid == request.auth.uid;
+      allow delete: if isAdmin();
+    }
+
+    // ------------------------------------------------------------------
+    // chat_sessions
+    //   - Patients read/write their own sessions.
+    //   - Therapists can read sessions for their linked patients.
+    //   - Admins can read all.
+    // ------------------------------------------------------------------
+    match /chat_sessions/{sessionId} {
+      allow read:  if isSignedIn() && (
+                       resource.data.userId == request.auth.uid
+                       || isAdmin()
+                       || (isTherapist() &&
+                           get(/databases/$(database)/documents/users/$(resource.data.userId))
+                             .data.get('therapistUid', '') == request.auth.uid)
+                     );
+      allow create: if isSignedIn() && request.resource.data.userId == request.auth.uid;
+      allow update: if isSignedIn() && resource.data.userId == request.auth.uid;
+      allow delete: if isAdmin();
+    }
+
+    // ------------------------------------------------------------------
+    // mood_checkins  (mobile — direct patient writes)
+    //   - Patients create and read their own check-ins.
+    //   - Therapists can read check-ins for their linked patients.
+    //   - Admins can read all.
+    // ------------------------------------------------------------------
+    match /mood_checkins/{checkinId} {
+      allow read:  if isSignedIn() && (
+                       resource.data.userId == request.auth.uid
+                       || isAdmin()
+                       || (isTherapist() &&
+                           get(/databases/$(database)/documents/users/$(resource.data.userId))
+                             .data.get('therapistUid', '') == request.auth.uid)
+                     );
+      allow create: if isSignedIn() && request.resource.data.userId == request.auth.uid;
+      // Check-ins are immutable after creation.
+      allow update, delete: if isAdmin();
+    }
+
+    // ------------------------------------------------------------------
+    // journal_entries  (mobile — direct patient writes)
+    //   - Patients create and read their own entries.
+    //   - Therapists can read entries for their linked patients.
+    //   - Admins can read all.
+    // ------------------------------------------------------------------
+    match /journal_entries/{entryId} {
+      allow read:  if isSignedIn() && (
+                       resource.data.userId == request.auth.uid
+                       || isAdmin()
+                       || (isTherapist() &&
+                           get(/databases/$(database)/documents/users/$(resource.data.userId))
+                             .data.get('therapistUid', '') == request.auth.uid)
+                     );
+      allow create: if isSignedIn() && request.resource.data.userId == request.auth.uid;
+      // Entries are immutable after creation (edit not supported in app yet).
+      allow update, delete: if isAdmin();
+    }
+
+    // ------------------------------------------------------------------
+    // therapists  (portal — Admin SDK writes only)
+    //   - Therapists can read their own profile.
+    //   - Admins can read all.
+    //   - Any authenticated patient can read therapist profiles to browse
+    //     and book sessions via the mobile app.
+    //   - Writes go through Admin SDK (portal backend) — no client writes.
+    // ------------------------------------------------------------------
+    match /therapists/{therapistId} {
+      allow read:  if isSignedIn();
+      allow write: if isAdmin();
+    }
+
+    // ------------------------------------------------------------------
+    // patients  (portal — Admin SDK writes only)
+    //   - Therapists can read their own patients.
+    //   - Admins can read all.
+    //   - Writes go through Admin SDK (portal backend) — no client writes.
+    // ------------------------------------------------------------------
+    match /patients/{patientId} {
+      allow read:  if isAdmin()
+                   || (isTherapist() && resource.data.therapistUid == request.auth.uid);
+      allow write: if isAdmin();
+    }
+
+    // ------------------------------------------------------------------
+    // appointments
+    //
+    //   Read access:
+    //     - Admin can read all.
+    //     - Therapist can read appointments assigned to them (therapistUid).
+    //     - Patient can read their own appointments (patientId = auth.uid).
+    //
+    //   Create (mobile direct writes):
+    //     - Authenticated patients may create a request where
+    //       patientId == their own auth.uid.
+    //
+    //   Update:
+    //     - Therapist may update any appointment assigned to them
+    //       (accept / decline / complete / add session notes).
+    //     - Admin may update anything.
+    //
+    //   Delete: admin only.
+    // ------------------------------------------------------------------
+    match /appointments/{appointmentId} {
+      allow read:
+        if isAdmin()
+        || (isTherapist() && resource.data.therapistUid == request.auth.uid)
+        || (isSignedIn() && resource.data.patientId == request.auth.uid);
+
+      allow create:
+        if isSignedIn()
+        && request.resource.data.patientId == request.auth.uid;
+
+      allow update:
+        if isAdmin()
+        || (isTherapist() && resource.data.therapistUid == request.auth.uid);
+
+      allow delete: if isAdmin();
+    }
+
+    // ------------------------------------------------------------------
+    // services  (portal — Admin SDK writes only)
+    // ------------------------------------------------------------------
+    match /services/{serviceId} {
+      allow read:  if isAdmin()
+                   || (isTherapist() && resource.data.therapistUid == request.auth.uid);
+      allow write: if isAdmin();
+    }
+
+    // ------------------------------------------------------------------
+    // moodEntries  (portal — Admin SDK writes only)
+    //   Different from mobile `mood_checkins` — these are therapist-logged.
+    // ------------------------------------------------------------------
+    match /moodEntries/{entryId} {
+      allow read:  if isAdmin()
+                   || (isTherapist() && resource.data.therapistUid == request.auth.uid);
+      allow write: if isAdmin();
+    }
+
+    // ------------------------------------------------------------------
+    // clinicalNotes  (portal — Admin SDK writes only)
+    // ------------------------------------------------------------------
+    match /clinicalNotes/{noteId} {
+      allow read:  if isAdmin()
+                   || (isTherapist() && resource.data.therapistUid == request.auth.uid);
+      allow write: if isAdmin();
+    }
+
+    // ------------------------------------------------------------------
+    // riskAlerts  (portal — Admin SDK writes only)
+    // ------------------------------------------------------------------
+    match /riskAlerts/{alertId} {
+      allow read:  if isAdmin()
+                   || (isTherapist() && resource.data.therapistUid == request.auth.uid);
+      allow write: if isAdmin();
+    }
+
+    // ------------------------------------------------------------------
+    // messageThreads / messages  (portal — Admin SDK writes only)
+    // ------------------------------------------------------------------
+    match /messageThreads/{threadId} {
+      allow read:  if isAdmin()
+                   || (isTherapist() && resource.data.therapistUid == request.auth.uid);
+      allow write: if isAdmin();
+    }
+
+    match /messages/{messageId} {
+      allow read:  if isAdmin()
+                   || (isTherapist() && (
+                       resource.data.senderId == request.auth.uid ||
+                       resource.data.recipientId == request.auth.uid
+                     ));
+      allow write: if isAdmin();
+    }
+
+    // ------------------------------------------------------------------
+    // notifications  (portal — Admin SDK writes only)
+    //   Therapists can read their own notifications.
+    // ------------------------------------------------------------------
+    match /notifications/{notificationId} {
+      allow read:  if isAdmin()
+                   || (isTherapist() && resource.data.userId == request.auth.uid);
+      allow write: if isAdmin();
+    }
+
+    // ------------------------------------------------------------------
+    // auditLogs  (portal — Admin SDK writes only, admin read only)
+    // ------------------------------------------------------------------
+    match /auditLogs/{logId} {
+      allow read:  if isAdmin();
+      allow write: if isAdmin();
+    }
+  }
+}

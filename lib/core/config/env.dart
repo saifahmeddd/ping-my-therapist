@@ -10,4 +10,12 @@ abstract final class Env {
     }
     return value;
   }
+
+  /// Spotify OAuth client ID (from https://developer.spotify.com/dashboard).
+  static String get spotifyClientId =>
+      dotenv.env['SPOTIFY_CLIENT_ID']?.trim() ?? '';
+
+  /// Spotify OAuth client secret.
+  static String get spotifyClientSecret =>
+      dotenv.env['SPOTIFY_CLIENT_SECRET']?.trim() ?? '';
 }

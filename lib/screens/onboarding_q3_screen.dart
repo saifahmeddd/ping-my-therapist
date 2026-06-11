@@ -1,132 +1,175 @@
 import 'package:flutter/material.dart';
-import 'package:go_router/go_router.dart';
+import 'package:ping_my_therapist/screens/success_screen.dart';
+import 'package:ping_my_therapist/widgets/custom_back_button.dart';
 
-import 'package:ping_my_therapist/core/layout/device_layout.dart';
-import 'package:ping_my_therapist/core/router/route_names.dart';
-import 'package:ping_my_therapist/theme/app_colors.dart';
-import 'package:ping_my_therapist/theme/app_text_styles.dart';
-import 'package:ping_my_therapist/widgets/onboarding/moodie_primary_button.dart';
-import 'package:ping_my_therapist/widgets/onboarding/onboarding_scaffold.dart';
-import 'package:ping_my_therapist/widgets/onboarding/step_progress_bar.dart';
+class OnboardingQuestionThreeScreen extends StatefulWidget {
+  final String answer1;
+  final String answer2;
+  final String userId;
 
-class OnboardingQ3Screen extends StatefulWidget {
-  const OnboardingQ3Screen({super.key});
+  const OnboardingQuestionThreeScreen({
+    super.key,
+    required this.answer1,
+    required this.answer2,
+    required this.userId,
+  });
 
   @override
-  State<OnboardingQ3Screen> createState() => _OnboardingQ3ScreenState();
+  State<OnboardingQuestionThreeScreen> createState() =>
+      _OnboardingQuestionThreeScreenState();
 }
 
-class _OnboardingQ3ScreenState extends State<OnboardingQ3Screen> {
-  final _controller = TextEditingController();
-  final _focusNode = FocusNode();
-  bool _focused = false;
-
-  @override
-  void initState() {
-    super.initState();
-    _focusNode.addListener(() {
-      setState(() => _focused = _focusNode.hasFocus);
-    });
-  }
-
+class _OnboardingQuestionThreeScreenState
+    extends State<OnboardingQuestionThreeScreen> {
+  final TextEditingController _additionalContextController =
+      TextEditingController();
   @override
   void dispose() {
-    _controller.dispose();
-    _focusNode.dispose();
+    _additionalContextController.dispose();
     super.dispose();
+  }
+
+  void _handleFinish() {
+    final additionalText = _additionalContextController.text.trim();
+    Navigator.of(context).pushReplacement(
+      MaterialPageRoute(
+        builder:
+            (_) => SuccessScreen(
+              userAnswers: {
+                'answer1': widget.answer1,
+                'answer2': widget.answer2,
+                'additional_context': additionalText,
+              },
+            ),
+      ),
+    );
   }
 
   @override
   Widget build(BuildContext context) {
-    return OnboardingScaffold(
-      body: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          OnboardingHeader(
-            onBack: () => context.go(RouteNames.onboardingQ2),
-            progress: const OnboardingStepProgress(activeStep: 2),
-            badge: const StepBadge(number: 3),
-            title: "Anything else you'd like to tell?",
-            subtitle: 'Optional — skip if you prefer.',
-          ),
-          Expanded(
-            child: Padding(
-              padding: EdgeInsets.symmetric(horizontal: context.w(24)),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text('Additional Context', style: AppTextStyles.fieldLabel),
-                  const SizedBox(height: 8),
-                  Stack(
-                    children: [
-                      AnimatedContainer(
-                        duration: const Duration(milliseconds: 150),
-                        decoration: BoxDecoration(
-                          color: _focused
-                              ? AppColors.white
-                              : AppColors.inputBackground,
-                          borderRadius: context.radius(16),
-                          border: Border.all(
-                            color: _focused
-                                ? AppColors.primary
-                                : Colors.transparent,
-                            width: 1.5,
-                          ),
-                          boxShadow: _focused
-                              ? [
-                                  BoxShadow(
-                                    color: AppColors.primary.withValues(
-                                      alpha: 0.15,
-                                    ),
-                                    blurRadius: 0,
-                                    spreadRadius: 3,
-                                  ),
-                                ]
-                              : null,
-                        ),
-                        child: TextField(
-                          controller: _controller,
-                          focusNode: _focusNode,
-                          maxLines: 5,
-                          style: AppTextStyles.textarea,
-                          decoration: InputDecoration(
-                            hintText: 'What are your likes and dislikes?',
-                            hintStyle: AppTextStyles.textarea.copyWith(
-                              color: AppColors.textHint,
-                            ),
-                            contentPadding: EdgeInsets.all(context.w(16)),
-                            border: InputBorder.none,
-                          ),
+    return Scaffold(
+      appBar: AppBar(
+        leading: CustomBackButton(iconColor: Colors.black87, iconSize: 24),
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+      ),
+      body: SafeArea(
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 66.0),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: <Widget>[
+              const CircleAvatar(
+                radius: 24.0,
+                backgroundColor: Color(0xFFE5E5F8),
+                child: Text(
+                  '3',
+                  style: TextStyle(
+                    fontSize: 24.0,
+                    fontWeight: FontWeight.w600,
+                    color: Colors.black87,
+                    fontFamily: 'quicksand',
+                    letterSpacing: -0.5,
+                  ),
+                ),
+              ),
+              const SizedBox(height: 16.0),
+              const Text(
+                'Anything else you\'d like to tell?',
+                style: TextStyle(
+                  fontSize: 24.0,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.black87,
+                  fontFamily: 'quicksand',
+                  letterSpacing: -1.5,
+                ),
+              ),
+              const SizedBox(height: 48.0),
+              Container(
+                decoration: BoxDecoration(
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withValues(alpha: 0.04),
+                      blurRadius: 8,
+                      offset: const Offset(0, 2),
+                    ),
+                  ],
+                  borderRadius: BorderRadius.circular(12.0),
+                ),
+                child: TextField(
+                  controller: _additionalContextController,
+                  maxLines: 4,
+                  style: const TextStyle(
+                    fontFamily: 'General Sans',
+                    fontSize: 14.0,
+                    fontWeight: FontWeight.w500,
+                    letterSpacing: -0.5,
+                  ),
+                  decoration: InputDecoration(
+                    hintText: 'What are your likes and dislikes?',
+                    hintStyle: const TextStyle(
+                      color: Color.fromARGB(137, 146, 139, 139),
+                      fontFamily: 'General Sans',
+                      letterSpacing: 0,
+                      fontSize: 12.0,
+                    ),
+                    contentPadding: const EdgeInsets.all(16.0),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12.0),
+                      borderSide: BorderSide.none,
+                    ),
+                    enabledBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12.0),
+                      borderSide: const BorderSide(color: Colors.transparent),
+                    ),
+                    focusedBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12.0),
+                      borderSide: const BorderSide(
+                        color: Color(0xFF9F7AEA),
+                        width: 2.0,
+                      ),
+                    ),
+                    filled: true,
+                    fillColor: Colors.grey[200],
+                  ),
+                ),
+              ),
+              const SizedBox(height: 48.0),
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton(
+                  onPressed: _handleFinish,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFF7D7DDE),
+                    padding: const EdgeInsets.symmetric(
+                      vertical: 8.0,
+                      horizontal: 16.0,
+                    ),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(8.0),
+                    ),
+                  ),
+                  child: const Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: <Widget>[
+                      Text(
+                        'Finish',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 14.0,
+                          fontFamily: 'General Sans',
+                          fontWeight: FontWeight.w500,
+                          letterSpacing: 0,
                         ),
                       ),
-                      Positioned(
-                        right: context.w(8),
-                        bottom: context.h(8),
-                        child: Icon(
-                          Icons.open_in_full_rounded,
-                          size: context.w(16),
-                          color: AppColors.primary.withValues(alpha: 0.4),
-                        ),
-                      ),
+                      SizedBox(width: 8.0),
+                      Icon(Icons.check, color: Colors.white),
                     ],
                   ),
-                  const SizedBox(height: 8),
-                  Text(
-                    'Share anything that helps us understand you better',
-                    style: AppTextStyles.footerHint,
-                  ),
-                ],
+                ),
               ),
-            ),
+            ],
           ),
-        ],
-      ),
-      bottom: Padding(
-        padding: context.insets(left: 24, top: 16, right: 24, bottom: 40),
-        child: MoodiePrimaryButton(
-          label: 'Finish',
-          trailingIconAsset: 'assets/icons/finish_arrow.svg',
-          onPressed: () => context.go(RouteNames.home),
         ),
       ),
     );

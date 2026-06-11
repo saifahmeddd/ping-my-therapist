@@ -1,162 +1,133 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
-import 'package:go_router/go_router.dart';
-
+import 'package:flutter_svg/flutter_svg.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:ping_my_therapist/core/app_strings.dart';
-import 'package:ping_my_therapist/core/layout/device_layout.dart';
-import 'package:ping_my_therapist/core/router/route_names.dart';
-import 'package:ping_my_therapist/theme/app_colors.dart';
-import 'package:ping_my_therapist/theme/app_text_styles.dart';
-import 'package:ping_my_therapist/widgets/onboarding/moodie_primary_button.dart';
-import 'package:ping_my_therapist/widgets/onboarding/onboarding_illustrations.dart';
+import 'package:ping_my_therapist/screens/signup_login_screen.dart';
+import 'package:ping_my_therapist/screens/home_page.dart';
 
-class SplashScreen extends StatelessWidget {
+class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
 
   @override
-  Widget build(BuildContext context) {
-    return AnnotatedRegion<SystemUiOverlayStyle>(
-      value: const SystemUiOverlayStyle(
-        statusBarColor: Colors.transparent,
-        statusBarIconBrightness: Brightness.light,
-        statusBarBrightness: Brightness.dark,
-      ),
-      child: Scaffold(
-        backgroundColor: AppColors.background,
-        body: Column(
-          children: [
-            const _SplashHero(),
-            Expanded(
-              child: SafeArea(
-                top: false,
-                child: Padding(
-                  padding: context.insets(
-                    left: 28,
-                    top: 40,
-                    right: 28,
-                    bottom: 48,
-                  ),
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.end,
-                    children: [
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          const _Dot(active: true),
-                          SizedBox(width: context.w(8)),
-                          const _Dot(active: false),
-                          SizedBox(width: context.w(8)),
-                          const _Dot(active: false),
-                        ],
-                      ),
-                      SizedBox(height: context.h(24)),
-                      Text(
-                        'Your personal mood companion',
-                        style: AppTextStyles.splashTagline,
-                        textAlign: TextAlign.center,
-                      ),
-                      SizedBox(height: context.h(20)),
-                      MoodiePrimaryButton(
-                        label: 'Get Started',
-                        onPressed: () => context.go(RouteNames.signup),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
+  State<SplashScreen> createState() => _SplashScreenState();
 }
 
-class _SplashHero extends StatelessWidget {
-  const _SplashHero();
+class _SplashScreenState extends State<SplashScreen> {
+  Future<void> _handleGetStarted() async {
+    final user = FirebaseAuth.instance.currentUser;
+
+    if (user != null) {
+      final onboardingDoc = await FirebaseFirestore.instance
+          .collection('onboarding_responses')
+          .doc(user.uid)
+          .get();
+
+      if (!mounted) return;
+
+      Navigator.of(context).pushReplacement(
+        MaterialPageRoute(
+          builder: (_) => onboardingDoc.exists
+              ? const HomePage()
+              : const SignupLoginScreen(),
+        ),
+      );
+      return;
+    }
+
+    if (!mounted) return;
+
+    Navigator.of(context).pushReplacement(
+      MaterialPageRoute(builder: (_) => const SignupLoginScreen()),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
-    return ClipRRect(
-      borderRadius: BorderRadius.only(
-        bottomLeft: Radius.circular(context.w(56)),
-        bottomRight: Radius.circular(context.w(56)),
-      ),
-      child: Container(
-        height: context.h(420),
-        width: double.infinity,
-        decoration: const BoxDecoration(color: AppColors.splashBand),
-        child: Stack(
-          clipBehavior: Clip.none,
+    return Scaffold(
+      backgroundColor: const Color(0xFF7D7DDE),
+      body: SafeArea(
+        child: Column(
           children: [
-            Positioned.fill(
-              child: DecoratedBox(
-                decoration: BoxDecoration(
-                  gradient: RadialGradient(
-                    center: Alignment.topCenter,
-                    radius: 1.2,
-                    colors: [
-                      Colors.white.withValues(alpha: 0.18),
-                      Colors.transparent,
-                    ],
-                    stops: const [0, 0.65],
-                  ),
-                ),
-              ),
-            ),
-            Padding(
-              padding: EdgeInsets.fromLTRB(
-                context.w(32),
-                MediaQuery.paddingOf(context).top + context.h(56),
-                context.w(32),
-                0,
-              ),
+            const Expanded(
+              flex: 2,
               child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Text(
-                    AppStrings.appName,
-                    style: AppTextStyles.splashTitle.copyWith(
-                      fontSize: 34,
-                      height: 1.1,
+                  Padding(
+                    padding: EdgeInsets.symmetric(horizontal: 24.0),
+                    child: Text(
+                      AppStrings.appName,
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        fontSize: 36,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.white,
+                        fontFamily: 'quicksand',
+                        letterSpacing: -1.5,
+                      ),
                     ),
                   ),
-                  SizedBox(height: context.h(8)),
+                  SizedBox(height: 8),
                   Text(
                     'Stay in touch—with yourself',
-                    style: AppTextStyles.splashSubtitle,
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                      fontFamily: 'quicksand',
+                      letterSpacing: -1.0,
+                    ),
                   ),
                 ],
               ),
             ),
-            Positioned(
-              bottom: context.h(-60),
-              left: 0,
-              right: 0,
-              child: const Center(child: SplashIllustration()),
+
+            Expanded(
+              flex: 3,
+              child: Padding(
+                padding: const EdgeInsets.only(bottom: 64.0),
+                child: Center(
+                  child: SvgPicture.asset(
+                    'assets/images/growth2.svg',
+                    height: 313,
+                    width: 313,
+                    fit: BoxFit.contain,
+                  ),
+                ),
+              ),
+            ),
+
+            Expanded(
+              flex: 1,
+              child: Center(
+                child: SizedBox(
+                  width: 314,
+                  height: 48,
+                  child: ElevatedButton(
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.white,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(7),
+                      ),
+                      elevation: 3,
+                    ),
+                    onPressed: _handleGetStarted,
+                    child: const Text(
+                      'Get Started',
+                      style: TextStyle(
+                        color: Color(0xFF2B2930),
+                        fontSize: 14,
+                        fontWeight: FontWeight.w500,
+                        fontFamily: 'GeneralSans',
+                      ),
+                    ),
+                  ),
+                ),
+              ),
             ),
           ],
         ),
-      ),
-    );
-  }
-}
-
-class _Dot extends StatelessWidget {
-  const _Dot({required this.active});
-
-  final bool active;
-
-  @override
-  Widget build(BuildContext context) {
-    final size = context.w(8);
-
-    return Container(
-      width: size,
-      height: size,
-      decoration: BoxDecoration(
-        color: active ? AppColors.primary : AppColors.dotInactive,
-        shape: BoxShape.circle,
       ),
     );
   }
