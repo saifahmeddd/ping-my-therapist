@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:ping_my_therapist/screens/signup_login_screen.dart';
+import 'package:go_router/go_router.dart';
+import 'package:ping_my_therapist/core/router/route_names.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -23,10 +24,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
     try {
       final user = FirebaseAuth.instance.currentUser;
       if (user == null) return;
-      final doc = await FirebaseFirestore.instance
-          .collection('users')
-          .doc(user.uid)
-          .get();
+      final doc =
+          await FirebaseFirestore.instance
+              .collection('users')
+              .doc(user.uid)
+              .get();
       if (doc.exists && mounted) {
         setState(() => _userData = doc.data());
       }
@@ -36,17 +38,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
   Future<void> _signOut() async {
     await FirebaseAuth.instance.signOut();
     if (!mounted) return;
-    Navigator.of(context).pushAndRemoveUntil(
-      MaterialPageRoute(builder: (_) => const SignupLoginScreen()),
-      (_) => false,
-    );
+    context.go(RouteNames.signup);
   }
 
   @override
   Widget build(BuildContext context) {
     final name = (_userData?['name'] as String?) ?? 'User';
-    final email =
-        FirebaseAuth.instance.currentUser?.email ?? 'No email linked';
+    final email = FirebaseAuth.instance.currentUser?.email ?? 'No email linked';
 
     return Scaffold(
       backgroundColor: Colors.white,

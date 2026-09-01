@@ -2,9 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:go_router/go_router.dart';
 import 'package:ping_my_therapist/core/app_strings.dart';
-import 'package:ping_my_therapist/screens/signup_login_screen.dart';
-import 'package:ping_my_therapist/screens/home_page.dart';
+import 'package:ping_my_therapist/core/router/route_names.dart';
 
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
@@ -14,32 +14,43 @@ class SplashScreen extends StatefulWidget {
 }
 
 class _SplashScreenState extends State<SplashScreen> {
-  Future<void> _handleGetStarted() async {
-    final user = FirebaseAuth.instance.currentUser;
+  bool _isRouting = false;
 
-    if (user != null) {
-      final onboardingDoc = await FirebaseFirestore.instance
-          .collection('onboarding_responses')
-          .doc(user.uid)
-          .get();
+  Future<void> _handleGetStarted() async {
+    if (_isRouting) return;
+    setState(() => _isRouting = true);
+
+    try {
+      final user = FirebaseAuth.instance.currentUser;
+
+      if (user != null) {
+        final onboardingDoc =
+            await FirebaseFirestore.instance
+                .collection('onboarding_responses')
+                .doc(user.uid)
+                .get();
+
+        if (!mounted) return;
+        context.go(
+          onboardingDoc.exists ? RouteNames.home : RouteNames.onboardingQ1,
+        );
+        return;
+      }
 
       if (!mounted) return;
-
-      Navigator.of(context).pushReplacement(
-        MaterialPageRoute(
-          builder: (_) => onboardingDoc.exists
-              ? const HomePage()
-              : const SignupLoginScreen(),
+      context.go(RouteNames.signup);
+    } catch (_) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            'We could not check your account. Please check your connection and try again.',
+          ),
         ),
       );
-      return;
+    } finally {
+      if (mounted) setState(() => _isRouting = false);
     }
-
-    if (!mounted) return;
-
-    Navigator.of(context).pushReplacement(
-      MaterialPageRoute(builder: (_) => const SignupLoginScreen()),
-    );
   }
 
   @override
@@ -112,16 +123,26 @@ class _SplashScreenState extends State<SplashScreen> {
                       ),
                       elevation: 3,
                     ),
-                    onPressed: _handleGetStarted,
-                    child: const Text(
-                      'Get Started',
-                      style: TextStyle(
-                        color: Color(0xFF2B2930),
-                        fontSize: 14,
-                        fontWeight: FontWeight.w500,
-                        fontFamily: 'GeneralSans',
-                      ),
-                    ),
+                    onPressed: _isRouting ? null : _handleGetStarted,
+                    child:
+                        _isRouting
+                            ? const SizedBox(
+                              width: 20,
+                              height: 20,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2,
+                                color: Color(0xFF535394),
+                              ),
+                            )
+                            : const Text(
+                              'Get Started',
+                              style: TextStyle(
+                                color: Color(0xFF2B2930),
+                                fontSize: 14,
+                                fontWeight: FontWeight.w500,
+                                fontFamily: 'GeneralSans',
+                              ),
+                            ),
                   ),
                 ),
               ),

@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
+import 'package:ping_my_therapist/core/router/route_names.dart';
 import 'package:flutter/services.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -14,8 +16,7 @@ class MusicRecommendationScreen extends StatefulWidget {
       _MusicRecommendationScreenState();
 }
 
-class _MusicRecommendationScreenState
-    extends State<MusicRecommendationScreen> {
+class _MusicRecommendationScreenState extends State<MusicRecommendationScreen> {
   static const _primaryColor = Color(0xFF535394);
   static const _accentColor = Color(0xFF7D7DDE);
   static const _surfaceColor = Color(0xFFE5E5F8);
@@ -47,21 +48,22 @@ class _MusicRecommendationScreenState
       // ── 1. Fetch the latest mood check-in from Firestore ──────────────────
       final user = FirebaseAuth.instance.currentUser;
       if (user != null) {
-        final snap = await FirebaseFirestore.instance
-            .collection('mood_checkins')
-            .where('userId', isEqualTo: user.uid)
-            .get();
+        final snap =
+            await FirebaseFirestore.instance
+                .collection('mood_checkins')
+                .where('userId', isEqualTo: user.uid)
+                .get();
 
         if (snap.docs.isNotEmpty) {
-          final sorted = snap.docs.toList()
-            ..sort((a, b) {
-              final aTime = a.data()['timestamp'];
-              final bTime = b.data()['timestamp'];
-              if (aTime is Timestamp && bTime is Timestamp) {
-                return bTime.compareTo(aTime);
-              }
-              return 0;
-            });
+          final sorted =
+              snap.docs.toList()..sort((a, b) {
+                final aTime = a.data()['timestamp'];
+                final bTime = b.data()['timestamp'];
+                if (aTime is Timestamp && bTime is Timestamp) {
+                  return bTime.compareTo(aTime);
+                }
+                return 0;
+              });
           final data = sorted.first.data();
           _moods = List<String>.from(data['moods'] as List? ?? []);
         } else {
@@ -73,18 +75,15 @@ class _MusicRecommendationScreenState
       if (!_noMoodRecorded) {
         if (_spotifyService.hasCredentials) {
           try {
-            _spotifyResults =
-                await _spotifyService.getRecommendations(_moods);
+            _spotifyResults = await _spotifyService.getRecommendations(_moods);
             _usingFallback = false;
           } catch (_) {
             // Spotify failed — show mood-based fallback playlists instead of crashing
-            _fallbackPlaylists =
-                _spotifyService.getFallbackForMoods(_moods);
+            _fallbackPlaylists = _spotifyService.getFallbackForMoods(_moods);
             _usingFallback = true;
           }
         } else {
-          _fallbackPlaylists =
-              _spotifyService.getFallbackForMoods(_moods);
+          _fallbackPlaylists = _spotifyService.getFallbackForMoods(_moods);
           _usingFallback = true;
         }
       }
@@ -119,8 +118,10 @@ class _MusicRecommendationScreenState
         shadowColor: Colors.transparent,
         foregroundColor: Colors.black,
         elevation: 0,
-        leading:
-            const CustomBackButton(iconColor: Colors.black87, iconSize: 24),
+        leading: const CustomBackButton(
+          iconColor: Colors.black87,
+          iconSize: 24,
+        ),
         systemOverlayStyle: const SystemUiOverlayStyle(
           statusBarColor: Colors.white,
           statusBarIconBrightness: Brightness.dark,
@@ -213,7 +214,9 @@ class _MusicRecommendationScreenState
                 backgroundColor: _accentColor,
                 foregroundColor: Colors.white,
                 padding: const EdgeInsets.symmetric(
-                    horizontal: 32, vertical: 14),
+                  horizontal: 32,
+                  vertical: 14,
+                ),
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(10),
                 ),
@@ -279,13 +282,14 @@ class _MusicRecommendationScreenState
             ),
             const SizedBox(height: 28),
             ElevatedButton(
-              onPressed: () =>
-                  Navigator.pushNamed(context, '/mood'),
+              onPressed: () => context.push(RouteNames.mood),
               style: ElevatedButton.styleFrom(
                 backgroundColor: _accentColor,
                 foregroundColor: Colors.white,
                 padding: const EdgeInsets.symmetric(
-                    horizontal: 32, vertical: 14),
+                  horizontal: 32,
+                  vertical: 14,
+                ),
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(10),
                 ),
@@ -362,9 +366,7 @@ class _MusicRecommendationScreenState
             Wrap(
               spacing: 8,
               runSpacing: 6,
-              children: _moods
-                  .map((mood) => _MoodChip(label: mood))
-                  .toList(),
+              children: _moods.map((mood) => _MoodChip(label: mood)).toList(),
             ),
           ],
           const SizedBox(height: 24),
@@ -422,11 +424,12 @@ class _MusicRecommendationScreenState
             ),
           ),
           const SizedBox(height: 12),
-          ..._fallbackPlaylists
-              .map((p) => _FallbackPlaylistTile(
-                    playlist: p,
-                    onTap: () => _openSpotify(p.spotifyUrl),
-                  )),
+          ..._fallbackPlaylists.map(
+            (p) => _FallbackPlaylistTile(
+              playlist: p,
+              onTap: () => _openSpotify(p.spotifyUrl),
+            ),
+          ),
         ],
       ),
     );
@@ -456,10 +459,11 @@ class _MusicRecommendationScreenState
             physics: const BouncingScrollPhysics(),
             padding: const EdgeInsets.fromLTRB(20, 0, 20, 0),
             itemCount: tracks.length,
-            itemBuilder: (context, i) => _TrackCard(
-              track: tracks[i],
-              onTap: () => _openSpotify(tracks[i].spotifyUrl),
-            ),
+            itemBuilder:
+                (context, i) => _TrackCard(
+                  track: tracks[i],
+                  onTap: () => _openSpotify(tracks[i].spotifyUrl),
+                ),
           ),
         ),
         const SizedBox(height: 28),
@@ -484,10 +488,12 @@ class _MusicRecommendationScreenState
             ),
           ),
           const SizedBox(height: 12),
-          ...playlists.map((p) => _PlaylistTile(
-                playlist: p,
-                onTap: () => _openSpotify(p.spotifyUrl),
-              )),
+          ...playlists.map(
+            (p) => _PlaylistTile(
+              playlist: p,
+              onTap: () => _openSpotify(p.spotifyUrl),
+            ),
+          ),
         ],
       ),
     );
@@ -580,17 +586,19 @@ class _TrackCard extends StatelessWidget {
           children: [
             ClipRRect(
               borderRadius: const BorderRadius.vertical(
-                  top: Radius.circular(14)),
-              child: track.albumArtUrl != null
-                  ? Image.network(
-                      track.albumArtUrl!,
-                      height: 110,
-                      width: double.infinity,
-                      fit: BoxFit.cover,
-                      errorBuilder: (_, __, ___) =>
-                          _AlbumArtPlaceholder(height: 110),
-                    )
-                  : _AlbumArtPlaceholder(height: 110),
+                top: Radius.circular(14),
+              ),
+              child:
+                  track.albumArtUrl != null
+                      ? Image.network(
+                        track.albumArtUrl!,
+                        height: 110,
+                        width: double.infinity,
+                        fit: BoxFit.cover,
+                        errorBuilder:
+                            (_, __, ___) => _AlbumArtPlaceholder(height: 110),
+                      )
+                      : _AlbumArtPlaceholder(height: 110),
             ),
             Padding(
               padding: const EdgeInsets.fromLTRB(10, 8, 10, 4),
@@ -672,16 +680,18 @@ class _PlaylistTile extends StatelessWidget {
           children: [
             ClipRRect(
               borderRadius: BorderRadius.circular(10),
-              child: playlist.imageUrl != null
-                  ? Image.network(
-                      playlist.imageUrl!,
-                      height: 62,
-                      width: 62,
-                      fit: BoxFit.cover,
-                      errorBuilder: (_, __, ___) =>
-                          _AlbumArtPlaceholder(height: 62, width: 62),
-                    )
-                  : _AlbumArtPlaceholder(height: 62, width: 62),
+              child:
+                  playlist.imageUrl != null
+                      ? Image.network(
+                        playlist.imageUrl!,
+                        height: 62,
+                        width: 62,
+                        fit: BoxFit.cover,
+                        errorBuilder:
+                            (_, __, ___) =>
+                                _AlbumArtPlaceholder(height: 62, width: 62),
+                      )
+                      : _AlbumArtPlaceholder(height: 62, width: 62),
             ),
             const SizedBox(width: 12),
             Expanded(
@@ -723,8 +733,7 @@ class _PlaylistTile extends StatelessWidget {
               ),
             ),
             Container(
-              padding:
-                  const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
               decoration: BoxDecoration(
                 color: const Color(0xFF1DB954),
                 borderRadius: BorderRadius.circular(20),
@@ -750,10 +759,7 @@ class _FallbackPlaylistTile extends StatelessWidget {
   final FallbackPlaylist playlist;
   final VoidCallback onTap;
 
-  const _FallbackPlaylistTile({
-    required this.playlist,
-    required this.onTap,
-  });
+  const _FallbackPlaylistTile({required this.playlist, required this.onTap});
 
   @override
   Widget build(BuildContext context) {
@@ -820,8 +826,7 @@ class _FallbackPlaylistTile extends StatelessWidget {
             ),
             const SizedBox(width: 8),
             Container(
-              padding:
-                  const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
               decoration: BoxDecoration(
                 color: const Color(0xFF1DB954),
                 borderRadius: BorderRadius.circular(20),

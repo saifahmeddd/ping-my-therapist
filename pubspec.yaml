@@ -47,6 +47,7 @@ flutter:
     - assets/icons/
     - assets/icons/nav-icons/
     - assets/images/
+    - assets/gifs/
     - assets/emojis/annoyance/
     - assets/emojis/energy/
     - assets/emojis/mood-scale/

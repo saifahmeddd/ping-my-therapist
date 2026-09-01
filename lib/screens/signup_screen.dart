@@ -25,7 +25,12 @@ class SignupScreen extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Padding(
-                      padding: context.insets(left: 28, top: 56, right: 28, bottom: 16),
+                      padding: context.insets(
+                        left: 28,
+                        top: 56,
+                        right: 28,
+                        bottom: 16,
+                      ),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
@@ -104,7 +109,7 @@ class SignupScreen extends StatelessWidget {
                   MoodiePrimaryButton(
                     label: 'Log In',
                     variant: MoodieButtonVariant.secondary,
-                    onPressed: () => context.go(RouteNames.splash),
+                    onPressed: () => context.go(RouteNames.login),
                   ),
                   SizedBox(height: context.h(16)),
                   _SocialSignInRow(),
@@ -137,16 +142,22 @@ class _SocialSignInRow extends StatelessWidget {
         Row(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
+            _SocialButton(child: _GoogleIcon()),
+            SizedBox(width: context.w(16)),
             _SocialButton(
-              child: _GoogleIcon(),
+              child: Icon(
+                Icons.apple,
+                size: context.w(24),
+                color: AppColors.textDark,
+              ),
             ),
             SizedBox(width: context.w(16)),
             _SocialButton(
-              child: Icon(Icons.apple, size: context.w(24), color: AppColors.textDark),
-            ),
-            SizedBox(width: context.w(16)),
-            _SocialButton(
-              child: Icon(Icons.facebook, size: context.w(28), color: Color(0xFF1877F2)),
+              child: Icon(
+                Icons.facebook,
+                size: context.w(28),
+                color: Color(0xFF1877F2),
+              ),
             ),
           ],
         ),

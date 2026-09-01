@@ -3,22 +3,7 @@ import 'package:ping_my_therapist/screens/onboarding_q2_screen.dart';
 import 'package:ping_my_therapist/widgets/custom_back_button.dart';
 
 class OnboardingQuestionOneScreen extends StatefulWidget {
-  final String name;
-  final String age;
-  final String occupation;
-  final String email;
-  final String password;
-  final String userId;
-
-  const OnboardingQuestionOneScreen({
-    super.key,
-    required this.name,
-    required this.age,
-    required this.occupation,
-    required this.email,
-    required this.password,
-    required this.userId,
-  });
+  const OnboardingQuestionOneScreen({super.key});
 
   @override
   State<OnboardingQuestionOneScreen> createState() =>
@@ -45,7 +30,6 @@ class _OnboardingQuestionOneScreenState
         builder:
             (context) => OnboardingQuestionTwoScreen(
               answer1: _responses[_selectedValue]!,
-              userId: widget.userId,
             ),
       ),
     );

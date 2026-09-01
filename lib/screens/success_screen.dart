@@ -2,7 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter_svg/flutter_svg.dart';
-import 'package:ping_my_therapist/screens/mood_checkin_screen.dart';
+import 'package:go_router/go_router.dart';
+import 'package:ping_my_therapist/core/router/route_names.dart';
 
 class SuccessScreen extends StatefulWidget {
   final Map<String, dynamic> userAnswers;
@@ -50,9 +51,9 @@ class _SuccessScreenState extends State<SuccessScreen> {
       await batch.commit();
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Failed to save answers: $e')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Failed to save answers: $e')));
     } finally {
       if (mounted) setState(() => _isSaving = false);
     }
@@ -93,12 +94,7 @@ class _SuccessScreenState extends State<SuccessScreen> {
                   width: double.infinity,
                   child: ElevatedButton.icon(
                     onPressed: () {
-                      Navigator.pushReplacement(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) => const MoodCheckinScreen(),
-                        ),
-                      );
+                      context.go(RouteNames.mood);
                     },
                     icon: const Icon(
                       Icons.lightbulb_outline,

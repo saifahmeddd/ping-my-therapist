@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
 
 import 'package:ping_my_therapist/theme/app_colors.dart';
 
@@ -11,7 +10,8 @@ abstract final class AppTextStyles {
     double? letterSpacing,
     double? height,
   }) {
-    return GoogleFonts.quicksand(
+    return TextStyle(
+      fontFamily: 'Quicksand',
       fontSize: fontSize,
       fontWeight: fontWeight,
       color: color,
@@ -109,10 +109,7 @@ abstract final class AppTextStyles {
     color: AppColors.primary,
   );
 
-  static TextStyle option = _base(
-    fontSize: 15,
-    fontWeight: FontWeight.w600,
-  );
+  static TextStyle option = _base(fontSize: 15, fontWeight: FontWeight.w600);
 
   static TextStyle button = _base(
     fontSize: 16,

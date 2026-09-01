@@ -1,117 +1,166 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:go_router/go_router.dart';
+import 'package:ping_my_therapist/core/router/route_names.dart';
 import 'package:ping_my_therapist/screens/breathing_exercises_screen.dart';
 import 'package:ping_my_therapist/screens/mood_tracker_screen.dart';
 import 'package:ping_my_therapist/screens/profile_screen.dart';
-import 'package:ping_my_therapist/screens/appointment_screen.dart';
-import 'package:ping_my_therapist/screens/music_recommendation_screen.dart';
 
 class HomePage extends StatefulWidget {
-  const HomePage({super.key});
+  final int initialIndex;
+  final List<Widget>? tabScreens;
+
+  const HomePage({super.key, this.initialIndex = 0, this.tabScreens});
 
   @override
   State<HomePage> createState() => _HomePageState();
 }
 
 class _HomePageState extends State<HomePage> {
-  int _selectedIndex = 0;
+  late int _selectedIndex;
+  late final Set<int> _visitedIndexes;
 
-  final List<Widget> _screens = const [
+  static const List<Widget> _defaultScreens = [
     _HomeContent(),
     MoodTrackerScreen(),
-    BreathingExercisesScreen(),
+    BreathingExercisesScreen(showBackButton: false),
     ProfileScreen(),
   ];
 
+  List<Widget> get _screens => widget.tabScreens ?? _defaultScreens;
+
+  @override
+  void initState() {
+    super.initState();
+    _selectedIndex = widget.initialIndex.clamp(0, _screens.length - 1);
+    _visitedIndexes = {_selectedIndex};
+  }
+
+  @override
+  void didUpdateWidget(covariant HomePage oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.initialIndex != widget.initialIndex) {
+      _selectedIndex = widget.initialIndex.clamp(0, _screens.length - 1);
+      _visitedIndexes.add(_selectedIndex);
+    }
+  }
+
   void _onItemTapped(int index) {
-    setState(() => _selectedIndex = index);
+    if (_selectedIndex != index) {
+      setState(() {
+        _selectedIndex = index;
+        _visitedIndexes.add(index);
+      });
+    }
   }
 
   @override
   Widget build(BuildContext context) {
-    return SafeArea(
-      top: true,
+    final usesDarkHeader = _selectedIndex != 3;
+
+    return AnnotatedRegion<SystemUiOverlayStyle>(
+      value: SystemUiOverlayStyle(
+        statusBarColor: Colors.transparent,
+        statusBarIconBrightness:
+            usesDarkHeader ? Brightness.light : Brightness.dark,
+        statusBarBrightness:
+            usesDarkHeader ? Brightness.dark : Brightness.light,
+      ),
       child: Scaffold(
         backgroundColor: Colors.white,
-        body: IndexedStack(index: _selectedIndex, children: _screens),
-        bottomNavigationBar: BottomNavigationBar(
-          items: [
-            BottomNavigationBarItem(
-              icon: SvgPicture.asset(
-                _selectedIndex == 0
-                    ? 'assets/icons/nav-icons/house-fill.svg'
-                    : 'assets/icons/nav-icons/house.svg',
-                height: 28,
-                width: 28,
-                colorFilter: ColorFilter.mode(
-                  _selectedIndex == 0
-                      ? const Color(0xFF7D7DDE)
-                      : Colors.grey,
-                  BlendMode.srcIn,
-                ),
-              ),
-              label: 'Home',
-            ),
-            BottomNavigationBarItem(
-              icon: SvgPicture.asset(
-                _selectedIndex == 1
-                    ? 'assets/icons/nav-icons/smiley-fill.svg'
-                    : 'assets/icons/nav-icons/smiley.svg',
-                height: 28,
-                width: 28,
-                colorFilter: ColorFilter.mode(
-                  _selectedIndex == 1
-                      ? const Color(0xFF7D7DDE)
-                      : Colors.grey,
-                  BlendMode.srcIn,
-                ),
-              ),
-              label: 'Tracker',
-            ),
-            BottomNavigationBarItem(
-              icon: SvgPicture.asset(
-                _selectedIndex == 2
-                    ? 'assets/icons/nav-icons/heartbeat-fill.svg'
-                    : 'assets/icons/nav-icons/heartbeat.svg',
-                height: 28,
-                width: 28,
-                colorFilter: ColorFilter.mode(
-                  _selectedIndex == 2
-                      ? const Color(0xFF7D7DDE)
-                      : Colors.grey,
-                  BlendMode.srcIn,
-                ),
-              ),
-              label: 'Exercises',
-            ),
-            BottomNavigationBarItem(
-              icon: SvgPicture.asset(
-                _selectedIndex == 3
-                    ? 'assets/icons/nav-icons/user-circle-fill.svg'
-                    : 'assets/icons/nav-icons/user-circle.svg',
-                height: 28,
-                width: 28,
-                colorFilter: ColorFilter.mode(
-                  _selectedIndex == 3
-                      ? const Color(0xFF7D7DDE)
-                      : Colors.grey,
-                  BlendMode.srcIn,
-                ),
-              ),
-              label: 'Profile',
-            ),
-          ],
-          currentIndex: _selectedIndex,
-          selectedItemColor: const Color(0xFF7D7DDE),
-          unselectedItemColor: Colors.grey,
-          onTap: _onItemTapped,
-          type: BottomNavigationBarType.fixed,
-          showUnselectedLabels: true,
-          backgroundColor: Colors.white,
-          elevation: 8,
+        body: IndexedStack(
+          index: _selectedIndex,
+          children: List.generate(
+            _screens.length,
+            (index) =>
+                _visitedIndexes.contains(index)
+                    ? _screens[index]
+                    : const SizedBox.shrink(),
+          ),
         ),
+        bottomNavigationBar: DecoratedBox(
+          decoration: const BoxDecoration(
+            color: Colors.white,
+            border: Border(top: BorderSide(color: Color(0xFFE8E6F8))),
+            boxShadow: [
+              BoxShadow(
+                color: Color(0x1435355F),
+                blurRadius: 18,
+                offset: Offset(0, -4),
+              ),
+            ],
+          ),
+          child: SafeArea(
+            top: false,
+            child: NavigationBar(
+              key: const ValueKey('primary-navigation'),
+              height: 70,
+              selectedIndex: _selectedIndex,
+              onDestinationSelected: _onItemTapped,
+              backgroundColor: Colors.white,
+              surfaceTintColor: Colors.transparent,
+              indicatorColor: const Color(0xFFEBE9FF),
+              labelBehavior: NavigationDestinationLabelBehavior.alwaysShow,
+              destinations: const [
+                NavigationDestination(
+                  icon: _NavIcon(assetName: 'house.svg'),
+                  selectedIcon: _NavIcon(
+                    assetName: 'house-fill.svg',
+                    selected: true,
+                  ),
+                  label: 'Home',
+                ),
+                NavigationDestination(
+                  icon: _NavIcon(assetName: 'smiley.svg'),
+                  selectedIcon: _NavIcon(
+                    assetName: 'smiley-fill.svg',
+                    selected: true,
+                  ),
+                  label: 'Tracker',
+                ),
+                NavigationDestination(
+                  icon: _NavIcon(assetName: 'heartbeat.svg'),
+                  selectedIcon: _NavIcon(
+                    assetName: 'heartbeat-fill.svg',
+                    selected: true,
+                  ),
+                  label: 'Exercises',
+                ),
+                NavigationDestination(
+                  icon: _NavIcon(assetName: 'user-circle.svg'),
+                  selectedIcon: _NavIcon(
+                    assetName: 'user-circle-fill.svg',
+                    selected: true,
+                  ),
+                  label: 'Profile',
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _NavIcon extends StatelessWidget {
+  final String assetName;
+  final bool selected;
+
+  const _NavIcon({required this.assetName, this.selected = false});
+
+  @override
+  Widget build(BuildContext context) {
+    return SvgPicture.asset(
+      'assets/icons/nav-icons/$assetName',
+      width: 24,
+      height: 24,
+      colorFilter: ColorFilter.mode(
+        selected ? const Color(0xFF6868B9) : const Color(0xFF8C8998),
+        BlendMode.srcIn,
       ),
     );
   }
@@ -140,10 +189,11 @@ class _HomeContentState extends State<_HomeContent> {
     try {
       final user = FirebaseAuth.instance.currentUser;
       if (user == null) return;
-      final doc = await FirebaseFirestore.instance
-          .collection('users')
-          .doc(user.uid)
-          .get();
+      final doc =
+          await FirebaseFirestore.instance
+              .collection('users')
+              .doc(user.uid)
+              .get();
       if (doc.exists && mounted) {
         setState(() => _userName = (doc.data()?['name'] as String?) ?? 'User');
       }
@@ -239,7 +289,7 @@ class _HomeContentState extends State<_HomeContent> {
                   labelColor: Colors.white,
                   iconColor: Colors.white,
                   imageRight: true,
-                  onTap: () => Navigator.pushNamed(context, '/chatbot'),
+                  onTap: () => context.push(RouteNames.chatbot),
                 ),
 
                 const Text(
@@ -264,7 +314,7 @@ class _HomeContentState extends State<_HomeContent> {
                   iconColor: Colors.black,
                   imageLeft: true,
                   border: Border.all(color: const Color(0xFFD1C4E9), width: 2),
-                  onTap: () => Navigator.pushNamed(context, '/exercises'),
+                  onTap: () => context.push(RouteNames.exercises),
                 ),
 
                 const Text(
@@ -288,7 +338,7 @@ class _HomeContentState extends State<_HomeContent> {
                   labelColor: Colors.black,
                   iconColor: Colors.black,
                   imageRight: true,
-                  onTap: () => Navigator.pushNamed(context, '/journaling'),
+                  onTap: () => context.push(RouteNames.journaling),
                 ),
 
                 const Text(
@@ -313,7 +363,7 @@ class _HomeContentState extends State<_HomeContent> {
                   iconColor: Colors.black,
                   imageLeft: true,
                   border: Border.all(color: const Color(0xFFD1C4E9), width: 2),
-                  onTap: () => Navigator.pushNamed(context, '/journaling'),
+                  onTap: () => context.push(RouteNames.journaling),
                 ),
 
                 const Text(
@@ -337,7 +387,32 @@ class _HomeContentState extends State<_HomeContent> {
                   labelColor: Colors.black,
                   iconColor: Colors.black,
                   imageRight: true,
-                  onTap: () => Navigator.pushNamed(context, '/mood'),
+                  onTap: () => context.push(RouteNames.mood),
+                ),
+
+                const Text(
+                  'Coping Tools',
+                  style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.w600,
+                    letterSpacing: -0.5,
+                  ),
+                ),
+                const SizedBox(height: 12),
+
+                // Name what you feel
+                _FeatureTile(
+                  text:
+                      "Slow down, find the right words, and make sense of what is showing up.",
+                  label: 'Name What You Feel',
+                  svgPath: 'assets/images/self-love.svg',
+                  backgroundColor: Colors.white,
+                  textColor: Colors.black,
+                  labelColor: Colors.black,
+                  iconColor: Colors.black,
+                  imageLeft: true,
+                  border: Border.all(color: const Color(0xFFD1C4E9), width: 2),
+                  onTap: () => context.push(RouteNames.nameWhatYouFeel),
                 ),
 
                 const Text(
@@ -361,14 +436,8 @@ class _HomeContentState extends State<_HomeContent> {
                   labelColor: Colors.black,
                   iconColor: Colors.black,
                   imageLeft: true,
-                  border:
-                      Border.all(color: const Color(0xFFD1C4E9), width: 2),
-                  onTap: () => Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (_) => const MusicRecommendationScreen(),
-                    ),
-                  ),
+                  border: Border.all(color: const Color(0xFFD1C4E9), width: 2),
+                  onTap: () => context.push(RouteNames.music),
                 ),
 
                 const Text(
@@ -392,12 +461,7 @@ class _HomeContentState extends State<_HomeContent> {
                   labelColor: Colors.white,
                   iconColor: Colors.white,
                   imageRight: true,
-                  onTap: () => Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (_) => const AppointmentScreen(),
-                    ),
-                  ),
+                  onTap: () => context.push(RouteNames.appointments),
                 ),
               ],
             ),
@@ -467,25 +531,22 @@ class _FeatureTileState extends State<_FeatureTile> {
             border: widget.border,
           ),
           child: Row(
-            children: widget.imageLeft
-                ? [
-                    SvgPicture.asset(
-                      widget.svgPath,
-                      height: 130,
-                      width: 130,
-                    ),
-                    const SizedBox(width: 16),
-                    Expanded(child: _textContent()),
-                  ]
-                : [
-                    Expanded(child: _textContent()),
-                    const SizedBox(width: 16),
-                    SvgPicture.asset(
-                      widget.svgPath,
-                      height: widget.label == 'Journaling' ? 150 : 130,
-                      width: widget.label == 'Journaling' ? 150 : 130,
-                    ),
-                  ],
+            children:
+                widget.imageLeft
+                    ? [
+                      SvgPicture.asset(widget.svgPath, height: 130, width: 130),
+                      const SizedBox(width: 16),
+                      Expanded(child: _textContent()),
+                    ]
+                    : [
+                      Expanded(child: _textContent()),
+                      const SizedBox(width: 16),
+                      SvgPicture.asset(
+                        widget.svgPath,
+                        height: widget.label == 'Journaling' ? 150 : 130,
+                        width: widget.label == 'Journaling' ? 150 : 130,
+                      ),
+                    ],
           ),
         ),
       ),

@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:ping_my_therapist/screens/onboarding_q1_screen.dart';
+import 'package:go_router/go_router.dart';
+import 'package:ping_my_therapist/core/router/route_names.dart';
 import 'package:ping_my_therapist/widgets/custom_back_button.dart';
 
 class EmailPasswordScreen extends StatefulWidget {
@@ -77,25 +78,11 @@ class _EmailPasswordScreenState extends State<EmailPasswordScreen> {
       }
 
       if (!mounted) return;
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(
-          builder:
-              (_) => OnboardingQuestionOneScreen(
-                name: widget.name,
-                age: widget.age,
-                occupation: widget.occupation,
-                email: email,
-                password: password,
-                userId: uid,
-              ),
-        ),
-      );
+      context.go(RouteNames.onboardingQ1);
     } on FirebaseAuthException catch (e) {
       if (!mounted) return;
       final msg = switch (e.code) {
-        'email-already-in-use' =>
-          'An account with this email already exists.',
+        'email-already-in-use' => 'An account with this email already exists.',
         'invalid-email' => 'Please enter a valid email address.',
         'weak-password' => 'Password must be at least 6 characters.',
         _ => 'Error: ${e.message}',
@@ -103,9 +90,9 @@ class _EmailPasswordScreenState extends State<EmailPasswordScreen> {
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error: ${e.toString()}')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Error: ${e.toString()}')));
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }
@@ -328,7 +315,9 @@ class _EmailPasswordScreenState extends State<EmailPasswordScreen> {
                             borderRadius: BorderRadius.circular(8.0),
                             boxShadow: [
                               BoxShadow(
-                                color: Colors.deepPurple.withValues(alpha: 0.12),
+                                color: Colors.deepPurple.withValues(
+                                  alpha: 0.12,
+                                ),
                                 blurRadius: 8,
                                 offset: const Offset(0, 2),
                               ),
@@ -339,7 +328,9 @@ class _EmailPasswordScreenState extends State<EmailPasswordScreen> {
                             style: ElevatedButton.styleFrom(
                               backgroundColor: Colors.transparent,
                               shadowColor: Colors.transparent,
-                              padding: const EdgeInsets.symmetric(vertical: 12.0),
+                              padding: const EdgeInsets.symmetric(
+                                vertical: 12.0,
+                              ),
                               shape: RoundedRectangleBorder(
                                 borderRadius: BorderRadius.circular(8.0),
                               ),

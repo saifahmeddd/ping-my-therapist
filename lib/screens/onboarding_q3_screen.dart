@@ -5,13 +5,11 @@ import 'package:ping_my_therapist/widgets/custom_back_button.dart';
 class OnboardingQuestionThreeScreen extends StatefulWidget {
   final String answer1;
   final String answer2;
-  final String userId;
 
   const OnboardingQuestionThreeScreen({
     super.key,
     required this.answer1,
     required this.answer2,
-    required this.userId,
   });
 
   @override

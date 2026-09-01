@@ -50,6 +50,12 @@ app.*.map.json
 /android/app/profile
 /android/app/release
 
+# Locally generated install packages
+/release_apk/
+
+# Separate Python service repository (managed and deployed independently)
+/wrapper/
+
 # Firebase / secrets (use local copies; firebase_options.dart is generated)
 **/google-services.json
 **/GoogleService-Info.plist

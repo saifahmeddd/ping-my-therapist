@@ -3,12 +3,15 @@ import 'package:flutter/services.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:ping_my_therapist/screens/home_page.dart';
+import 'package:go_router/go_router.dart';
+import 'package:ping_my_therapist/core/router/route_names.dart';
 import 'package:ping_my_therapist/services/patient_link_service.dart';
 import 'package:ping_my_therapist/widgets/custom_back_button.dart';
 
 class MoodCheckinScreen extends StatefulWidget {
-  const MoodCheckinScreen({super.key});
+  final bool returnToTracker;
+
+  const MoodCheckinScreen({super.key, this.returnToTracker = false});
 
   @override
   State<MoodCheckinScreen> createState() => _MoodCheckinScreenState();
@@ -87,9 +90,10 @@ class _MoodCheckinScreenState extends State<MoodCheckinScreen> {
       // Non-blocking: navigate regardless of save result
     }
     if (!mounted) return;
-    Navigator.pushReplacement(
-      context,
-      MaterialPageRoute(builder: (context) => const HomePage()),
+    context.go(
+      widget.returnToTracker
+          ? '${RouteNames.home}?tab=tracker'
+          : RouteNames.home,
     );
   }
 
@@ -103,7 +107,10 @@ class _MoodCheckinScreenState extends State<MoodCheckinScreen> {
         shadowColor: Colors.transparent,
         foregroundColor: Colors.black,
         elevation: 0,
-        leading: const CustomBackButton(iconColor: Colors.black87, iconSize: 24),
+        leading: const CustomBackButton(
+          iconColor: Colors.black87,
+          iconSize: 24,
+        ),
         systemOverlayStyle: const SystemUiOverlayStyle(
           statusBarColor: Colors.white,
           statusBarIconBrightness: Brightness.dark,
