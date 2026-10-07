@@ -38,114 +38,112 @@ class _OnboardingQuestionOneScreenState
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: Stack(
-        children: [
-          Padding(
-            padding: const EdgeInsets.symmetric(
-              horizontal: 16.0,
-              vertical: 126.0,
-            ),
-            child: Padding(
-              padding: const EdgeInsets.only(top: 60.0),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: <Widget>[
-                  const CircleAvatar(
-                    radius: 24.0,
-                    backgroundColor: Color(0xFFE5E5F8),
-                    child: Text(
-                      '1',
+      body: SafeArea(
+        child: Stack(
+          children: [
+            Positioned.fill(
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.fromLTRB(16, 186, 16, 24),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: <Widget>[
+                    const CircleAvatar(
+                      radius: 24.0,
+                      backgroundColor: Color(0xFFE5E5F8),
+                      child: Text(
+                        '1',
+                        style: TextStyle(
+                          fontSize: 24.0,
+                          fontWeight: FontWeight.w600,
+                          color: Colors.black87,
+                          fontFamily: 'quicksand',
+                          letterSpacing: -0.5,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 16.0),
+                    const Text(
+                      'When life gets overwhelming, you usually...',
                       style: TextStyle(
                         fontSize: 24.0,
-                        fontWeight: FontWeight.w600,
+                        fontWeight: FontWeight.bold,
                         color: Colors.black87,
                         fontFamily: 'quicksand',
-                        letterSpacing: -0.5,
+                        letterSpacing: -1.5,
                       ),
                     ),
-                  ),
-                  const SizedBox(height: 16.0),
-                  const Text(
-                    'When life gets overwhelming, you usually...',
-                    style: TextStyle(
-                      fontSize: 24.0,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.black87,
-                      fontFamily: 'quicksand',
-                      letterSpacing: -1.5,
+                    const SizedBox(height: 48.0),
+                    Align(
+                      alignment: Alignment.center,
+                      child: _buildOption(index: 0, text: 'Reflect quietly'),
                     ),
-                  ),
-                  const SizedBox(height: 48.0),
-                  Align(
-                    alignment: Alignment.center,
-                    child: _buildOption(index: 0, text: 'Reflect quietly'),
-                  ),
-                  const SizedBox(height: 12.0),
-                  Align(
-                    alignment: Alignment.center,
-                    child: _buildOption(index: 1, text: 'Reach out'),
-                  ),
-                  const SizedBox(height: 12.0),
-                  Align(
-                    alignment: Alignment.center,
-                    child: _buildOption(index: 2, text: 'Power through'),
-                  ),
-                  const SizedBox(height: 12.0),
-                  Align(
-                    alignment: Alignment.center,
-                    child: _buildOption(index: 3, text: 'Distract yourself'),
-                  ),
-                  const SizedBox(height: 48.0),
-                  Align(
-                    alignment: Alignment.center,
-                    child: SizedBox(
-                      width: 364,
-                      height: 48,
-                      child: ElevatedButton(
-                        onPressed:
-                            _selectedValue == -1
-                                ? null
-                                : _saveResponseAndContinue,
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: const Color(0xFF7D7DDE),
-                          padding: const EdgeInsets.symmetric(
-                            vertical: 8.0,
-                            horizontal: 16.0,
-                          ),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(8.0),
-                          ),
-                        ),
-                        child: const Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: <Widget>[
-                            Text(
-                              'Next',
-                              style: TextStyle(
-                                color: Colors.white,
-                                fontSize: 12.0,
-                                fontFamily: 'General Sans',
-                                fontWeight: FontWeight.w500,
-                                letterSpacing: 0,
-                              ),
+                    const SizedBox(height: 12.0),
+                    Align(
+                      alignment: Alignment.center,
+                      child: _buildOption(index: 1, text: 'Reach out'),
+                    ),
+                    const SizedBox(height: 12.0),
+                    Align(
+                      alignment: Alignment.center,
+                      child: _buildOption(index: 2, text: 'Power through'),
+                    ),
+                    const SizedBox(height: 12.0),
+                    Align(
+                      alignment: Alignment.center,
+                      child: _buildOption(index: 3, text: 'Distract yourself'),
+                    ),
+                    const SizedBox(height: 48.0),
+                    Align(
+                      alignment: Alignment.center,
+                      child: SizedBox(
+                        width: 364,
+                        height: 48,
+                        child: ElevatedButton(
+                          onPressed:
+                              _selectedValue == -1
+                                  ? null
+                                  : _saveResponseAndContinue,
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: const Color(0xFF7D7DDE),
+                            padding: const EdgeInsets.symmetric(
+                              vertical: 8.0,
+                              horizontal: 16.0,
                             ),
-                            SizedBox(width: 8.0),
-                            Icon(Icons.arrow_forward, color: Colors.white),
-                          ],
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(8.0),
+                            ),
+                          ),
+                          child: const Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: <Widget>[
+                              Text(
+                                'Next',
+                                style: TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 12.0,
+                                  fontFamily: 'General Sans',
+                                  fontWeight: FontWeight.w500,
+                                  letterSpacing: 0,
+                                ),
+                              ),
+                              SizedBox(width: 8.0),
+                              Icon(Icons.arrow_forward, color: Colors.white),
+                            ],
+                          ),
                         ),
                       ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
             ),
-          ),
-          Positioned(
-            top: 12.0,
-            left: 3,
-            child: CustomBackButton(iconColor: Colors.black87, iconSize: 24),
-          ),
-        ],
+            Positioned(
+              top: 12.0,
+              left: 3,
+              child: CustomBackButton(iconColor: Colors.black87, iconSize: 24),
+            ),
+          ],
+        ),
       ),
     );
   }

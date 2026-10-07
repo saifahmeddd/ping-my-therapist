@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:intl/intl.dart';
 import 'package:ping_my_therapist/services/appointment_service.dart';
+import 'package:ping_my_therapist/widgets/pullable_section_header.dart';
+import 'package:ping_my_therapist/widgets/stretchy_section_page.dart';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Root screen — two tabs: Find Therapist / My Bookings
@@ -32,73 +35,61 @@ class _AppointmentScreenState extends State<AppointmentScreen>
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: Colors.white,
-      body: NestedScrollView(
-        headerSliverBuilder: (context, innerBoxIsScrolled) => [
-          SliverAppBar(
-            expandedHeight: 140,
-            pinned: true,
-            backgroundColor: const Color(0xFF535394),
-            foregroundColor: Colors.white,
-            leading: IconButton(
-              icon: const Icon(Icons.arrow_back, color: Colors.white),
-              onPressed: () => Navigator.pop(context),
-            ),
-            flexibleSpace: FlexibleSpaceBar(
-              titlePadding:
-                  const EdgeInsets.only(left: 56, bottom: 54, right: 16),
-              title: const Text(
-                'Book a Session',
-                style: TextStyle(
-                  color: Colors.white,
-                  fontWeight: FontWeight.bold,
-                  fontSize: 18,
-                  letterSpacing: -0.5,
+    return AnnotatedRegion<SystemUiOverlayStyle>(
+      value: SystemUiOverlayStyle.light,
+      child: Scaffold(
+        backgroundColor: sectionPurple,
+        body: SafeArea(
+          child: Column(
+            children: [
+              PullableSectionHeader(
+                title: 'Book a Session',
+                subtitle: 'Find support that feels right for you.',
+                leading: IconButton(
+                  icon: const Icon(Icons.arrow_back, color: Colors.white),
+                  onPressed: () => Navigator.pop(context),
                 ),
               ),
-              background: Container(
-                color: const Color(0xFF535394),
-                child: Stack(
-                  children: [
-                    Positioned(
-                      right: 16,
-                      bottom: 48,
-                      child: Opacity(
-                        opacity: 0.15,
-                        child: SvgPicture.asset(
-                          'assets/images/serene.svg',
-                          height: 90,
+              Expanded(
+                child: ClipRRect(
+                  borderRadius: const BorderRadius.vertical(
+                    top: Radius.circular(30),
+                  ),
+                  child: ColoredBox(
+                    color: Colors.white,
+                    child: Column(
+                      children: [
+                        TabBar(
+                          controller: _tabController,
+                          labelColor: sectionPurple,
+                          unselectedLabelColor: const Color(0xFF7A7A9A),
+                          indicatorColor: sectionPurple,
+                          indicatorWeight: 3,
+                          labelStyle: const TextStyle(
+                            fontWeight: FontWeight.w600,
+                            fontSize: 14,
+                          ),
+                          tabs: const [
+                            Tab(text: 'Find Therapist'),
+                            Tab(text: 'My Bookings'),
+                          ],
                         ),
-                      ),
+                        Expanded(
+                          child: TabBarView(
+                            controller: _tabController,
+                            children: const [
+                              _FindTherapistTab(),
+                              _MyBookingsTab(),
+                            ],
+                          ),
+                        ),
+                      ],
                     ),
-                  ],
+                  ),
                 ),
               ),
-            ),
-            bottom: TabBar(
-              controller: _tabController,
-              labelColor: Colors.white,
-              unselectedLabelColor: Colors.white54,
-              indicatorColor: Colors.white,
-              indicatorWeight: 3,
-              labelStyle: const TextStyle(
-                fontWeight: FontWeight.w600,
-                fontSize: 14,
-              ),
-              tabs: const [
-                Tab(text: 'Find Therapist'),
-                Tab(text: 'My Bookings'),
-              ],
-            ),
+            ],
           ),
-        ],
-        body: TabBarView(
-          controller: _tabController,
-          children: const [
-            _FindTherapistTab(),
-            _MyBookingsTab(),
-          ],
         ),
       ),
     );
@@ -158,7 +149,11 @@ class _FindTherapistTabState extends State<_FindTherapistTab> {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              const Icon(Icons.error_outline, size: 52, color: Colors.redAccent),
+              const Icon(
+                Icons.error_outline,
+                size: 52,
+                color: Colors.redAccent,
+              ),
               const SizedBox(height: 16),
               const Text(
                 'Could not load therapists.',
@@ -224,16 +219,19 @@ class _FindTherapistTabState extends State<_FindTherapistTab> {
       child: ListView.builder(
         padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
         itemCount: _therapists!.length,
-        itemBuilder: (ctx, i) => _TherapistCard(
-          therapist: _therapists![i],
-          onTap: () => Navigator.push(
-            ctx,
-            MaterialPageRoute(
-              builder: (_) =>
-                  TherapistDetailScreen(therapist: _therapists![i]),
+        itemBuilder:
+            (ctx, i) => _TherapistCard(
+              therapist: _therapists![i],
+              onTap:
+                  () => Navigator.push(
+                    ctx,
+                    MaterialPageRoute(
+                      builder:
+                          (_) =>
+                              TherapistDetailScreen(therapist: _therapists![i]),
+                    ),
+                  ),
             ),
-          ),
-        ),
       ),
     );
   }
@@ -287,7 +285,11 @@ class _TherapistCardState extends State<_TherapistCard> {
             crossAxisAlignment: CrossAxisAlignment.center,
             children: [
               // Avatar
-              _TherapistAvatar(name: t.name, photoUrl: t.profilePhoto, radius: 28),
+              _TherapistAvatar(
+                name: t.name,
+                photoUrl: t.profilePhoto,
+                radius: 28,
+              ),
               const SizedBox(width: 14),
               // Info
               Expanded(
@@ -306,10 +308,7 @@ class _TherapistCardState extends State<_TherapistCard> {
                       const SizedBox(height: 2),
                       Text(
                         '${t.yearsOfExperience} yrs experience',
-                        style: TextStyle(
-                          fontSize: 12,
-                          color: Colors.grey[600],
-                        ),
+                        style: TextStyle(fontSize: 12, color: Colors.grey[600]),
                       ),
                     ],
                     if (t.specializations.isNotEmpty) ...[
@@ -317,27 +316,30 @@ class _TherapistCardState extends State<_TherapistCard> {
                       Wrap(
                         spacing: 4,
                         runSpacing: 4,
-                        children: t.specializations
-                            .take(3)
-                            .map(
-                              (s) => Container(
-                                padding: const EdgeInsets.symmetric(
-                                    horizontal: 8, vertical: 3),
-                                decoration: BoxDecoration(
-                                  color: const Color(0xFFE5E5F8),
-                                  borderRadius: BorderRadius.circular(20),
-                                ),
-                                child: Text(
-                                  s,
-                                  style: const TextStyle(
-                                    fontSize: 11,
-                                    color: Color(0xFF535394),
-                                    fontWeight: FontWeight.w600,
+                        children:
+                            t.specializations
+                                .take(3)
+                                .map(
+                                  (s) => Container(
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 8,
+                                      vertical: 3,
+                                    ),
+                                    decoration: BoxDecoration(
+                                      color: const Color(0xFFE5E5F8),
+                                      borderRadius: BorderRadius.circular(20),
+                                    ),
+                                    child: Text(
+                                      s,
+                                      style: const TextStyle(
+                                        fontSize: 11,
+                                        color: Color(0xFF535394),
+                                        fontWeight: FontWeight.w600,
+                                      ),
+                                    ),
                                   ),
-                                ),
-                              ),
-                            )
-                            .toList(),
+                                )
+                                .toList(),
                       ),
                     ],
                   ],
@@ -419,8 +421,7 @@ class _MyBookingsTab extends StatelessWidget {
         return ListView.builder(
           padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
           itemCount: appointments.length,
-          itemBuilder: (_, i) =>
-              _AppointmentCard(appointment: appointments[i]),
+          itemBuilder: (_, i) => _AppointmentCard(appointment: appointments[i]),
         );
       },
     );
@@ -457,13 +458,12 @@ class _AppointmentCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final apt = appointment;
-    final dateStr =
-        DateFormat('EEE, MMM d, yyyy').format(apt.scheduledAt.toLocal());
+    final dateStr = DateFormat(
+      'EEE, MMM d, yyyy',
+    ).format(apt.scheduledAt.toLocal());
     final timeStr = DateFormat('h:mm a').format(apt.scheduledAt.toLocal());
-    final statusColor =
-        _statusColors[apt.status] ?? const Color(0xFF9CA3AF);
-    final statusLabel =
-        _statusLabels[apt.status] ?? _capitalize(apt.status);
+    final statusColor = _statusColors[apt.status] ?? const Color(0xFF9CA3AF);
+    final statusLabel = _statusLabels[apt.status] ?? _capitalize(apt.status);
 
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
@@ -515,12 +515,15 @@ class _AppointmentCard extends StatelessWidget {
                       // Status badge
                       Container(
                         padding: const EdgeInsets.symmetric(
-                            horizontal: 8, vertical: 3),
+                          horizontal: 8,
+                          vertical: 3,
+                        ),
                         decoration: BoxDecoration(
                           color: statusColor.withValues(alpha: 0.12),
                           borderRadius: BorderRadius.circular(20),
                           border: Border.all(
-                              color: statusColor.withValues(alpha: 0.4)),
+                            color: statusColor.withValues(alpha: 0.4),
+                          ),
                         ),
                         child: Text(
                           statusLabel,
@@ -621,26 +624,29 @@ class TherapistDetailScreen extends StatelessWidget {
                   Wrap(
                     spacing: 8,
                     runSpacing: 6,
-                    children: therapist.specializations
-                        .map(
-                          (s) => Container(
-                            padding: const EdgeInsets.symmetric(
-                                horizontal: 12, vertical: 6),
-                            decoration: BoxDecoration(
-                              color: const Color(0xFFE5E5F8),
-                              borderRadius: BorderRadius.circular(20),
-                            ),
-                            child: Text(
-                              s,
-                              style: const TextStyle(
-                                fontSize: 12,
-                                color: Color(0xFF535394),
-                                fontWeight: FontWeight.w600,
+                    children:
+                        therapist.specializations
+                            .map(
+                              (s) => Container(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 12,
+                                  vertical: 6,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: const Color(0xFFE5E5F8),
+                                  borderRadius: BorderRadius.circular(20),
+                                ),
+                                child: Text(
+                                  s,
+                                  style: const TextStyle(
+                                    fontSize: 12,
+                                    color: Color(0xFF535394),
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
                               ),
-                            ),
-                          ),
-                        )
-                        .toList(),
+                            )
+                            .toList(),
                   ),
                   const SizedBox(height: 24),
                 ],
@@ -674,11 +680,9 @@ class TherapistDetailScreen extends StatelessWidget {
                 if (therapist.availability.isNotEmpty) ...[
                   _SectionTitle('Available Days'),
                   const SizedBox(height: 10),
-                  _AvailabilityChips(
-                      availability: therapist.availability),
+                  _AvailabilityChips(availability: therapist.availability),
                   const SizedBox(height: 8),
-                  _AvailabilityRows(
-                      availability: therapist.availability),
+                  _AvailabilityRows(availability: therapist.availability),
                 ] else ...[
                   Container(
                     padding: const EdgeInsets.all(14),
@@ -689,8 +693,11 @@ class TherapistDetailScreen extends StatelessWidget {
                     ),
                     child: Row(
                       children: [
-                        Icon(Icons.info_outline,
-                            color: Colors.amber.shade800, size: 18),
+                        Icon(
+                          Icons.info_outline,
+                          color: Colors.amber.shade800,
+                          size: 18,
+                        ),
                         const SizedBox(width: 8),
                         const Expanded(
                           child: Text(
@@ -760,10 +767,11 @@ class _AvailabilityChips extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final activeDays = availability
-        .map((a) => (a['dayOfWeek'] as num?)?.toInt() ?? -1)
-        .where((d) => d >= 0 && d < 7)
-        .toSet();
+    final activeDays =
+        availability
+            .map((a) => (a['dayOfWeek'] as num?)?.toInt() ?? -1)
+            .where((d) => d >= 0 && d < 7)
+            .toSet();
 
     return Row(
       children: List.generate(7, (i) {
@@ -774,9 +782,7 @@ class _AvailabilityChips extends StatelessWidget {
             width: 36,
             height: 36,
             decoration: BoxDecoration(
-              color: active
-                  ? const Color(0xFF535394)
-                  : const Color(0xFFE5E7EB),
+              color: active ? const Color(0xFF535394) : const Color(0xFFE5E7EB),
               borderRadius: BorderRadius.circular(10),
             ),
             child: Center(
@@ -800,8 +806,13 @@ class _AvailabilityRows extends StatelessWidget {
   final List<Map<String, dynamic>> availability;
 
   static const _dayNames = [
-    'Sunday', 'Monday', 'Tuesday', 'Wednesday',
-    'Thursday', 'Friday', 'Saturday'
+    'Sunday',
+    'Monday',
+    'Tuesday',
+    'Wednesday',
+    'Thursday',
+    'Friday',
+    'Saturday',
   ];
 
   const _AvailabilityRows({required this.availability});
@@ -809,34 +820,35 @@ class _AvailabilityRows extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Column(
-      children: availability.map((slot) {
-        final dow = (slot['dayOfWeek'] as num?)?.toInt() ?? -1;
-        final dayName = (dow >= 0 && dow < 7) ? _dayNames[dow] : '—';
-        final start = (slot['startTime'] as String?) ?? '';
-        final end = (slot['endTime'] as String?) ?? '';
+      children:
+          availability.map((slot) {
+            final dow = (slot['dayOfWeek'] as num?)?.toInt() ?? -1;
+            final dayName = (dow >= 0 && dow < 7) ? _dayNames[dow] : '—';
+            final start = (slot['startTime'] as String?) ?? '';
+            final end = (slot['endTime'] as String?) ?? '';
 
-        return Padding(
-          padding: const EdgeInsets.only(top: 8),
-          child: Row(
-            children: [
-              SizedBox(
-                width: 90,
-                child: Text(
-                  dayName,
-                  style: const TextStyle(
-                    fontSize: 13,
-                    fontWeight: FontWeight.w600,
+            return Padding(
+              padding: const EdgeInsets.only(top: 8),
+              child: Row(
+                children: [
+                  SizedBox(
+                    width: 90,
+                    child: Text(
+                      dayName,
+                      style: const TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
                   ),
-                ),
+                  Text(
+                    '$start – $end',
+                    style: TextStyle(fontSize: 13, color: Colors.grey[600]),
+                  ),
+                ],
               ),
-              Text(
-                '$start – $end',
-                style: TextStyle(fontSize: 13, color: Colors.grey[600]),
-              ),
-            ],
-          ),
-        );
-      }).toList(),
+            );
+          }).toList(),
     );
   }
 }
@@ -878,9 +890,10 @@ class _BookingSheetState extends State<_BookingSheet> {
     // Flutter weekday: Monday=1 … Sunday=7; convert to 0=Sun…6=Sat
     final dow = _selectedDate!.weekday % 7;
 
-    final matchingSlots = widget.therapist.availability
-        .where((a) => (a['dayOfWeek'] as num?)?.toInt() == dow)
-        .toList();
+    final matchingSlots =
+        widget.therapist.availability
+            .where((a) => (a['dayOfWeek'] as num?)?.toInt() == dow)
+            .toList();
 
     if (matchingSlots.isEmpty) return [];
 
@@ -919,14 +932,18 @@ class _BookingSheetState extends State<_BookingSheet> {
   bool _isAvailableDay(DateTime date) {
     final dow = date.weekday % 7;
     if (widget.therapist.availability.isEmpty) return true;
-    return widget.therapist.availability
-        .any((a) => (a['dayOfWeek'] as num?)?.toInt() == dow);
+    return widget.therapist.availability.any(
+      (a) => (a['dayOfWeek'] as num?)?.toInt() == dow,
+    );
   }
 
   DateTime _bookingFirstDate() {
     final today = DateTime.now();
-    return DateTime(today.year, today.month, today.day)
-        .add(const Duration(days: 1));
+    return DateTime(
+      today.year,
+      today.month,
+      today.day,
+    ).add(const Duration(days: 1));
   }
 
   DateTime _bookingLastDate() {
@@ -951,7 +968,8 @@ class _BookingSheetState extends State<_BookingSheet> {
     final firstDate = _bookingFirstDate();
     final lastDate = _bookingLastDate();
     final hasAvailability = widget.therapist.availability.isNotEmpty;
-    final firstSelectable = hasAvailability ? _firstSelectableDate() : firstDate;
+    final firstSelectable =
+        hasAvailability ? _firstSelectableDate() : firstDate;
 
     if (hasAvailability && firstSelectable == null) {
       setState(() {
@@ -961,10 +979,11 @@ class _BookingSheetState extends State<_BookingSheet> {
       return;
     }
 
-    final initialDate = _selectedDate != null &&
-            (!hasAvailability || _isAvailableDay(_selectedDate!))
-        ? _selectedDate!
-        : firstSelectable!;
+    final initialDate =
+        _selectedDate != null &&
+                (!hasAvailability || _isAvailableDay(_selectedDate!))
+            ? _selectedDate!
+            : firstSelectable!;
 
     try {
       final picked = await showDatePicker(
@@ -974,15 +993,16 @@ class _BookingSheetState extends State<_BookingSheet> {
         lastDate: lastDate,
         selectableDayPredicate: hasAvailability ? _isAvailableDay : null,
         useRootNavigator: true,
-        builder: (ctx, child) => Theme(
-          data: Theme.of(ctx).copyWith(
-            colorScheme: const ColorScheme.light(
-              primary: Color(0xFF535394),
-              onPrimary: Colors.white,
+        builder:
+            (ctx, child) => Theme(
+              data: Theme.of(ctx).copyWith(
+                colorScheme: const ColorScheme.light(
+                  primary: Color(0xFF535394),
+                  onPrimary: Colors.white,
+                ),
+              ),
+              child: child!,
             ),
-          ),
-          child: child!,
-        ),
       );
       if (picked != null && mounted) {
         setState(() {
@@ -993,7 +1013,9 @@ class _BookingSheetState extends State<_BookingSheet> {
       }
     } catch (_) {
       if (mounted) {
-        setState(() => _error = 'Could not open the date picker. Please try again.');
+        setState(
+          () => _error = 'Could not open the date picker. Please try again.',
+        );
       }
     }
   }
@@ -1037,8 +1059,10 @@ class _BookingSheetState extends State<_BookingSheet> {
       }
 
       // Duplicate check
-      final isDuplicate =
-          await _service.hasPendingRequest(widget.therapist.uid, scheduledAt);
+      final isDuplicate = await _service.hasPendingRequest(
+        widget.therapist.uid,
+        scheduledAt,
+      );
       if (isDuplicate) {
         setState(() {
           _loading = false;
@@ -1053,9 +1077,10 @@ class _BookingSheetState extends State<_BookingSheet> {
         scheduledAt: scheduledAt,
         duration: _duration,
         type: _type,
-        notes: _notesController.text.trim().isEmpty
-            ? null
-            : _notesController.text.trim(),
+        notes:
+            _notesController.text.trim().isEmpty
+                ? null
+                : _notesController.text.trim(),
       );
 
       if (mounted) {
@@ -1135,14 +1160,16 @@ class _BookingSheetState extends State<_BookingSheet> {
                 ),
                 child: Row(
                   children: [
-                    const Icon(Icons.error_outline,
-                        color: Colors.red, size: 18),
+                    const Icon(
+                      Icons.error_outline,
+                      color: Colors.red,
+                      size: 18,
+                    ),
                     const SizedBox(width: 8),
                     Expanded(
                       child: Text(
                         _error!,
-                        style: const TextStyle(
-                            color: Colors.red, fontSize: 13),
+                        style: const TextStyle(color: Colors.red, fontSize: 13),
                       ),
                     ),
                   ],
@@ -1160,50 +1187,58 @@ class _BookingSheetState extends State<_BookingSheet> {
                 onTap: _pickDate,
                 borderRadius: BorderRadius.circular(12),
                 child: Container(
-                width: double.infinity,
-                padding: const EdgeInsets.symmetric(
-                    horizontal: 16, vertical: 14),
-                decoration: BoxDecoration(
-                  color: _selectedDate != null
-                      ? const Color(0xFFE5E5F8)
-                      : Colors.white,
-                  border: Border.all(
-                    color: _selectedDate != null
-                        ? const Color(0xFF535394)
-                        : const Color(0xFFD1C4E9),
-                    width: 1.5,
+                  width: double.infinity,
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 14,
                   ),
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Row(
-                  children: [
-                    Icon(
-                      Icons.calendar_today_outlined,
-                      size: 18,
-                      color: _selectedDate != null
-                          ? const Color(0xFF535394)
-                          : Colors.grey,
+                  decoration: BoxDecoration(
+                    color:
+                        _selectedDate != null
+                            ? const Color(0xFFE5E5F8)
+                            : Colors.white,
+                    border: Border.all(
+                      color:
+                          _selectedDate != null
+                              ? const Color(0xFF535394)
+                              : const Color(0xFFD1C4E9),
+                      width: 1.5,
                     ),
-                    const SizedBox(width: 10),
-                    Text(
-                      _selectedDate != null
-                          ? DateFormat('EEEE, MMMM d, yyyy')
-                              .format(_selectedDate!)
-                          : 'Tap to choose a date',
-                      style: TextStyle(
-                        color: _selectedDate != null
-                            ? const Color(0xFF535394)
-                            : Colors.grey,
-                        fontWeight: _selectedDate != null
-                            ? FontWeight.w600
-                            : FontWeight.normal,
-                        fontSize: 14,
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Row(
+                    children: [
+                      Icon(
+                        Icons.calendar_today_outlined,
+                        size: 18,
+                        color:
+                            _selectedDate != null
+                                ? const Color(0xFF535394)
+                                : Colors.grey,
                       ),
-                    ),
-                  ],
+                      const SizedBox(width: 10),
+                      Text(
+                        _selectedDate != null
+                            ? DateFormat(
+                              'EEEE, MMMM d, yyyy',
+                            ).format(_selectedDate!)
+                            : 'Tap to choose a date',
+                        style: TextStyle(
+                          color:
+                              _selectedDate != null
+                                  ? const Color(0xFF535394)
+                                  : Colors.grey,
+                          fontWeight:
+                              _selectedDate != null
+                                  ? FontWeight.w600
+                                  : FontWeight.normal,
+                          fontSize: 14,
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
               ),
-            ),
             ),
             const SizedBox(height: 16),
 
@@ -1221,8 +1256,7 @@ class _BookingSheetState extends State<_BookingSheet> {
                   ),
                   child: const Row(
                     children: [
-                      Icon(Icons.info_outline,
-                          color: Colors.amber, size: 18),
+                      Icon(Icons.info_outline, color: Colors.amber, size: 18),
                       SizedBox(width: 8),
                       Expanded(
                         child: Text(
@@ -1237,32 +1271,37 @@ class _BookingSheetState extends State<_BookingSheet> {
                 Wrap(
                   spacing: 8,
                   runSpacing: 8,
-                  children: _availableSlots.map((time) {
-                    final isSelected = _selectedTime == time;
-                    return GestureDetector(
-                      onTap: () => setState(() => _selectedTime = time),
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 14, vertical: 9),
-                        decoration: BoxDecoration(
-                          color: isSelected
-                              ? const Color(0xFF535394)
-                              : const Color(0xFFE5E5F8),
-                          borderRadius: BorderRadius.circular(10),
-                        ),
-                        child: Text(
-                          time,
-                          style: TextStyle(
-                            fontSize: 13,
-                            fontWeight: FontWeight.w600,
-                            color: isSelected
-                                ? Colors.white
-                                : const Color(0xFF535394),
+                  children:
+                      _availableSlots.map((time) {
+                        final isSelected = _selectedTime == time;
+                        return GestureDetector(
+                          onTap: () => setState(() => _selectedTime = time),
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 14,
+                              vertical: 9,
+                            ),
+                            decoration: BoxDecoration(
+                              color:
+                                  isSelected
+                                      ? const Color(0xFF535394)
+                                      : const Color(0xFFE5E5F8),
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                            child: Text(
+                              time,
+                              style: TextStyle(
+                                fontSize: 13,
+                                fontWeight: FontWeight.w600,
+                                color:
+                                    isSelected
+                                        ? Colors.white
+                                        : const Color(0xFF535394),
+                              ),
+                            ),
                           ),
-                        ),
-                      ),
-                    );
-                  }).toList(),
+                        );
+                      }).toList(),
                 ),
               const SizedBox(height: 16),
             ],
@@ -1271,35 +1310,40 @@ class _BookingSheetState extends State<_BookingSheet> {
             _FieldLabel('Duration'),
             const SizedBox(height: 8),
             Row(
-              children: [30, 45, 60, 90].map((d) {
-                final isSelected = _duration == d;
-                return Padding(
-                  padding: const EdgeInsets.only(right: 8),
-                  child: GestureDetector(
-                    onTap: () => setState(() => _duration = d),
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 16, vertical: 9),
-                      decoration: BoxDecoration(
-                        color: isSelected
-                            ? const Color(0xFF535394)
-                            : const Color(0xFFE5E5F8),
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                      child: Text(
-                        '$d min',
-                        style: TextStyle(
-                          fontSize: 13,
-                          fontWeight: FontWeight.w600,
-                          color: isSelected
-                              ? Colors.white
-                              : const Color(0xFF535394),
+              children:
+                  [30, 45, 60, 90].map((d) {
+                    final isSelected = _duration == d;
+                    return Padding(
+                      padding: const EdgeInsets.only(right: 8),
+                      child: GestureDetector(
+                        onTap: () => setState(() => _duration = d),
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 16,
+                            vertical: 9,
+                          ),
+                          decoration: BoxDecoration(
+                            color:
+                                isSelected
+                                    ? const Color(0xFF535394)
+                                    : const Color(0xFFE5E5F8),
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                          child: Text(
+                            '$d min',
+                            style: TextStyle(
+                              fontSize: 13,
+                              fontWeight: FontWeight.w600,
+                              color:
+                                  isSelected
+                                      ? Colors.white
+                                      : const Color(0xFF535394),
+                            ),
+                          ),
                         ),
                       ),
-                    ),
-                  ),
-                );
-              }).toList(),
+                    );
+                  }).toList(),
             ),
             const SizedBox(height: 16),
 
@@ -1307,36 +1351,41 @@ class _BookingSheetState extends State<_BookingSheet> {
             _FieldLabel('Session Type'),
             const SizedBox(height: 8),
             Row(
-              children: ['individual', 'couples', 'group'].map((t) {
-                final isSelected = _type == t;
-                final label = '${t[0].toUpperCase()}${t.substring(1)}';
-                return Padding(
-                  padding: const EdgeInsets.only(right: 8),
-                  child: GestureDetector(
-                    onTap: () => setState(() => _type = t),
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 14, vertical: 9),
-                      decoration: BoxDecoration(
-                        color: isSelected
-                            ? const Color(0xFF535394)
-                            : const Color(0xFFE5E5F8),
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                      child: Text(
-                        label,
-                        style: TextStyle(
-                          fontSize: 13,
-                          fontWeight: FontWeight.w600,
-                          color: isSelected
-                              ? Colors.white
-                              : const Color(0xFF535394),
+              children:
+                  ['individual', 'couples', 'group'].map((t) {
+                    final isSelected = _type == t;
+                    final label = '${t[0].toUpperCase()}${t.substring(1)}';
+                    return Padding(
+                      padding: const EdgeInsets.only(right: 8),
+                      child: GestureDetector(
+                        onTap: () => setState(() => _type = t),
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 14,
+                            vertical: 9,
+                          ),
+                          decoration: BoxDecoration(
+                            color:
+                                isSelected
+                                    ? const Color(0xFF535394)
+                                    : const Color(0xFFE5E5F8),
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                          child: Text(
+                            label,
+                            style: TextStyle(
+                              fontSize: 13,
+                              fontWeight: FontWeight.w600,
+                              color:
+                                  isSelected
+                                      ? Colors.white
+                                      : const Color(0xFF535394),
+                            ),
+                          ),
                         ),
                       ),
-                    ),
-                  ),
-                );
-              }).toList(),
+                    );
+                  }).toList(),
             ),
             const SizedBox(height: 16),
 
@@ -1349,8 +1398,7 @@ class _BookingSheetState extends State<_BookingSheet> {
               style: const TextStyle(fontSize: 14),
               decoration: InputDecoration(
                 hintText: "Share what you'd like to work on…",
-                hintStyle:
-                    TextStyle(color: Colors.grey[400], fontSize: 13),
+                hintStyle: TextStyle(color: Colors.grey[400], fontSize: 13),
                 filled: true,
                 fillColor: const Color(0xFFF8F7FF),
                 contentPadding: const EdgeInsets.all(14),
@@ -1361,7 +1409,9 @@ class _BookingSheetState extends State<_BookingSheet> {
                 focusedBorder: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(12),
                   borderSide: const BorderSide(
-                      color: Color(0xFF535394), width: 1.5),
+                    color: Color(0xFF535394),
+                    width: 1.5,
+                  ),
                 ),
               ),
             ),
@@ -1381,23 +1431,24 @@ class _BookingSheetState extends State<_BookingSheet> {
                     borderRadius: BorderRadius.circular(16),
                   ),
                 ),
-                child: _loading
-                    ? const SizedBox(
-                        width: 20,
-                        height: 20,
-                        child: CircularProgressIndicator(
-                          color: Colors.white,
-                          strokeWidth: 2,
+                child:
+                    _loading
+                        ? const SizedBox(
+                          width: 20,
+                          height: 20,
+                          child: CircularProgressIndicator(
+                            color: Colors.white,
+                            strokeWidth: 2,
+                          ),
+                        )
+                        : const Text(
+                          'Request Appointment',
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                            letterSpacing: -0.3,
+                          ),
                         ),
-                      )
-                    : const Text(
-                        'Request Appointment',
-                        style: TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.bold,
-                          letterSpacing: -0.3,
-                        ),
-                      ),
               ),
             ),
           ],
@@ -1432,31 +1483,33 @@ class _TherapistAvatar extends StatelessWidget {
     return CircleAvatar(
       radius: radius,
       backgroundColor: const Color(0xFF7D7DDE),
-      child: photoUrl != null
-          ? ClipOval(
-              child: Image.network(
-                photoUrl!,
-                width: radius * 2,
-                height: radius * 2,
-                fit: BoxFit.cover,
-                errorBuilder: (_, __, ___) => Text(
-                  initials,
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: size,
-                    fontWeight: FontWeight.bold,
-                  ),
+      child:
+          photoUrl != null
+              ? ClipOval(
+                child: Image.network(
+                  photoUrl!,
+                  width: radius * 2,
+                  height: radius * 2,
+                  fit: BoxFit.cover,
+                  errorBuilder:
+                      (_, __, ___) => Text(
+                        initials,
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: size,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                ),
+              )
+              : Text(
+                initials,
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: size,
+                  fontWeight: FontWeight.bold,
                 ),
               ),
-            )
-          : Text(
-              initials,
-              style: TextStyle(
-                color: Colors.white,
-                fontSize: size,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
     );
   }
 }
@@ -1503,8 +1556,11 @@ class _InfoRow extends StatelessWidget {
   final String label;
   final String value;
 
-  const _InfoRow(
-      {required this.icon, required this.label, required this.value});
+  const _InfoRow({
+    required this.icon,
+    required this.label,
+    required this.value,
+  });
 
   @override
   Widget build(BuildContext context) {

@@ -3,6 +3,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:go_router/go_router.dart';
 import 'package:ping_my_therapist/core/router/route_names.dart';
+import 'package:ping_my_therapist/core/auth/password_policy.dart';
 import 'package:ping_my_therapist/widgets/custom_back_button.dart';
 
 class EmailPasswordScreen extends StatefulWidget {
@@ -24,18 +25,23 @@ class EmailPasswordScreen extends StatefulWidget {
 class _EmailPasswordScreenState extends State<EmailPasswordScreen> {
   final TextEditingController _emailController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
+  final FocusNode _emailFocus = FocusNode();
+  final FocusNode _passwordFocus = FocusNode();
   bool _isLoading = false;
+  String? _pendingProfileUid;
 
   @override
   void dispose() {
     _emailController.dispose();
     _passwordController.dispose();
+    _emailFocus.dispose();
+    _passwordFocus.dispose();
     super.dispose();
   }
 
   void _createAccount() async {
     final email = _emailController.text.trim();
-    final password = _passwordController.text.trim();
+    final password = _passwordController.text;
 
     if (email.isEmpty || password.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -44,14 +50,35 @@ class _EmailPasswordScreenState extends State<EmailPasswordScreen> {
       return;
     }
 
+    final passwordError = validateNewPassword(password);
+    if (passwordError != null) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(passwordError)));
+      return;
+    }
+
+    FocusScope.of(context).unfocus();
     setState(() => _isLoading = true);
 
     try {
-      // Create a brand-new email/password account
-      final userCredential = await FirebaseAuth.instance
-          .createUserWithEmailAndPassword(email: email, password: password);
-
-      final uid = userCredential.user!.uid;
+      final currentUser = FirebaseAuth.instance.currentUser;
+      if (_pendingProfileUid != null &&
+          currentUser?.uid == _pendingProfileUid &&
+          currentUser?.email?.toLowerCase() != email.toLowerCase()) {
+        throw StateError(
+          'Finish saving this account before changing its email.',
+        );
+      }
+      final user =
+          _pendingProfileUid != null && currentUser?.uid == _pendingProfileUid
+              ? currentUser!
+              : (await FirebaseAuth.instance.createUserWithEmailAndPassword(
+                email: email,
+                password: password,
+              )).user!;
+      final uid = user.uid;
+      _pendingProfileUid = uid;
 
       // Save profile to Firestore immediately
       try {
@@ -63,15 +90,16 @@ class _EmailPasswordScreenState extends State<EmailPasswordScreen> {
           'createdAt': FieldValue.serverTimestamp(),
           'onboarding_complete': false,
         });
+        _pendingProfileUid = null;
         debugPrint('✅ Firestore write SUCCESS for uid: $uid');
       } catch (firestoreError) {
         debugPrint('❌ Firestore write FAILED: $firestoreError');
         if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('DB Error: $firestoreError'),
+          const SnackBar(
+            content: Text('Could not save your profile. Please retry.'),
             backgroundColor: Colors.red,
-            duration: const Duration(seconds: 6),
+            duration: Duration(seconds: 6),
           ),
         );
         return;
@@ -84,7 +112,8 @@ class _EmailPasswordScreenState extends State<EmailPasswordScreen> {
       final msg = switch (e.code) {
         'email-already-in-use' => 'An account with this email already exists.',
         'invalid-email' => 'Please enter a valid email address.',
-        'weak-password' => 'Password must be at least 6 characters.',
+        'weak-password' =>
+          validateNewPassword(password) ?? 'Choose a stronger password.',
         _ => 'Error: ${e.message}',
       };
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
@@ -100,6 +129,7 @@ class _EmailPasswordScreenState extends State<EmailPasswordScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final keyboardVisible = MediaQuery.viewInsetsOf(context).bottom > 0;
     return Scaffold(
       body: Container(
         color: Colors.white,
@@ -109,13 +139,17 @@ class _EmailPasswordScreenState extends State<EmailPasswordScreen> {
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 24.0),
                 child: SingleChildScrollView(
-                  padding: EdgeInsets.only(
-                    bottom: MediaQuery.of(context).viewInsets.bottom,
-                  ),
+                  keyboardDismissBehavior:
+                      ScrollViewKeyboardDismissBehavior.onDrag,
+                  padding: const EdgeInsets.only(bottom: 24),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const SizedBox(height: 176.0),
+                      AnimatedContainer(
+                        duration: const Duration(milliseconds: 180),
+                        curve: Curves.easeOut,
+                        height: keyboardVisible ? 56.0 : 176.0,
+                      ),
                       const Text(
                         'Create Your Account',
                         style: TextStyle(
@@ -166,7 +200,16 @@ class _EmailPasswordScreenState extends State<EmailPasswordScreen> {
                         ),
                         child: TextField(
                           controller: _emailController,
+                          focusNode: _emailFocus,
                           keyboardType: TextInputType.emailAddress,
+                          textInputAction: TextInputAction.next,
+                          onSubmitted: (_) => _passwordFocus.requestFocus(),
+                          onTapOutside:
+                              (_) =>
+                                  FocusManager.instance.primaryFocus?.unfocus(),
+                          autofillHints: const [AutofillHints.email],
+                          autocorrect: false,
+                          scrollPadding: const EdgeInsets.only(bottom: 24),
                           style: const TextStyle(
                             fontFamily: 'General Sans',
                             fontSize: 13,
@@ -238,7 +281,15 @@ class _EmailPasswordScreenState extends State<EmailPasswordScreen> {
                         ),
                         child: TextField(
                           controller: _passwordController,
+                          focusNode: _passwordFocus,
                           obscureText: true,
+                          textInputAction: TextInputAction.done,
+                          onSubmitted: (_) => FocusScope.of(context).unfocus(),
+                          onTapOutside:
+                              (_) =>
+                                  FocusManager.instance.primaryFocus?.unfocus(),
+                          autofillHints: const [AutofillHints.newPassword],
+                          scrollPadding: const EdgeInsets.only(bottom: 24),
                           style: const TextStyle(
                             fontFamily: 'General Sans',
                             fontSize: 12,

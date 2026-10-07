@@ -7,8 +7,9 @@ import 'package:ping_my_therapist/core/router/route_names.dart';
 
 class SuccessScreen extends StatefulWidget {
   final Map<String, dynamic> userAnswers;
+  final Future<void> Function(Map<String, dynamic> answers)? saveAnswers;
 
-  const SuccessScreen({super.key, required this.userAnswers});
+  const SuccessScreen({super.key, required this.userAnswers, this.saveAnswers});
 
   @override
   State<SuccessScreen> createState() => _SuccessScreenState();
@@ -16,6 +17,7 @@ class SuccessScreen extends StatefulWidget {
 
 class _SuccessScreenState extends State<SuccessScreen> {
   bool _isSaving = false;
+  bool _saveFailed = false;
 
   @override
   void initState() {
@@ -24,36 +26,48 @@ class _SuccessScreenState extends State<SuccessScreen> {
   }
 
   Future<void> _saveDataToFirebase() async {
-    setState(() => _isSaving = true);
+    setState(() {
+      _isSaving = true;
+      _saveFailed = false;
+    });
 
     try {
-      final currentUser = FirebaseAuth.instance.currentUser;
-      if (currentUser == null) throw Exception('No user signed in');
+      if (widget.saveAnswers case final save?) {
+        await save(widget.userAnswers);
+      } else {
+        final currentUser = FirebaseAuth.instance.currentUser;
+        if (currentUser == null) throw Exception('No user signed in');
 
-      final batch = FirebaseFirestore.instance.batch();
+        final batch = FirebaseFirestore.instance.batch();
 
-      // Save onboarding responses (read by chatbot for personalisation)
-      final responsesRef = FirebaseFirestore.instance
-          .collection('onboarding_responses')
-          .doc(currentUser.uid);
-      batch.set(responsesRef, {
-        'uid': currentUser.uid,
-        'answers': widget.userAnswers,
-        'timestamp': FieldValue.serverTimestamp(),
-      });
+        // Save onboarding responses (read by chatbot for personalisation)
+        final responsesRef = FirebaseFirestore.instance
+            .collection('onboarding_responses')
+            .doc(currentUser.uid);
+        batch.set(responsesRef, {
+          'uid': currentUser.uid,
+          'answers': widget.userAnswers,
+          'timestamp': FieldValue.serverTimestamp(),
+        });
 
-      // Mark onboarding complete on user profile
-      final userRef = FirebaseFirestore.instance
-          .collection('users')
-          .doc(currentUser.uid);
-      batch.update(userRef, {'onboarding_complete': true});
+        // Mark onboarding complete on user profile
+        final userRef = FirebaseFirestore.instance
+            .collection('users')
+            .doc(currentUser.uid);
+        batch.set(userRef, {
+          'onboarding_complete': true,
+        }, SetOptions(merge: true));
 
-      await batch.commit();
+        await batch.commit();
+      }
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text('Failed to save answers: $e')));
+      setState(() => _saveFailed = true);
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Could not save your answers. Please retry.'),
+        ),
+      );
     } finally {
       if (mounted) setState(() => _isSaving = false);
     }
@@ -93,16 +107,17 @@ class _SuccessScreenState extends State<SuccessScreen> {
                 SizedBox(
                   width: double.infinity,
                   child: ElevatedButton.icon(
-                    onPressed: () {
-                      context.go(RouteNames.mood);
-                    },
+                    onPressed:
+                        _saveFailed
+                            ? _saveDataToFirebase
+                            : () => context.go(RouteNames.mood),
                     icon: const Icon(
                       Icons.lightbulb_outline,
                       color: Colors.white,
                       size: 20,
                     ),
-                    label: const Text(
-                      'Start Your Journey',
+                    label: Text(
+                      _saveFailed ? 'Retry saving' : 'Start Your Journey',
                       style: TextStyle(
                         fontSize: 12.0,
                         color: Colors.white,

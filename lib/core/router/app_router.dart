@@ -65,10 +65,11 @@ final appRoutes = <GoRoute>[
   ),
   GoRoute(
     path: RouteNames.mood,
-    builder:
-        (context, state) => MoodCheckinScreen(
-          returnToTracker: state.uri.queryParameters['from'] == 'tracker',
-        ),
+    redirect: (context, state) => '${RouteNames.home}?tab=tracker',
+  ),
+  GoRoute(
+    path: RouteNames.moodCheckin,
+    builder: (context, state) => MoodCheckinScreen(returnToTracker: true),
   ),
   GoRoute(
     path: RouteNames.appointments,

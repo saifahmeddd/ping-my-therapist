@@ -61,6 +61,15 @@ void main() {
     expect(find.text('2 day streak'), findsOneWidget);
     expect(find.text('Latest reflection'), findsNothing);
     expect(find.text('LATEST REFLECTION'), findsOneWidget);
+    final header = find.byKey(const ValueKey('stretchy-section-header'));
+    final initialHeight = tester.getSize(header).height;
+    final gesture = await tester.startGesture(const Offset(170, 155));
+    await gesture.moveBy(const Offset(0, 140));
+    await tester.pump();
+    expect(tester.getSize(header).height, greaterThan(initialHeight));
+    await gesture.up();
+    await tester.pumpAndSettle();
+    expect(tester.getSize(header).height, closeTo(initialHeight, 1));
     await tester.scrollUntilVisible(
       find.text('Recent check-ins'),
       260,
@@ -68,6 +77,29 @@ void main() {
     );
     expect(find.text('Recent check-ins'), findsOneWidget);
   });
+
+  testWidgets(
+    'tracker explains a failed mood stream and keeps check-in actions',
+    (tester) async {
+      await tester.pumpWidget(
+        MaterialApp(
+          home: MoodTrackerScreen(
+            checkinsStream: Stream<List<MoodCheckinEntry>>.error(
+              StateError('offline'),
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(
+        find.text('Check-ins are temporarily unavailable'),
+        findsOneWidget,
+      );
+      expect(find.text('Quick check-in'), findsOneWidget);
+      expect(find.text('Name feelings'), findsOneWidget);
+    },
+  );
 
   testWidgets('navbar keeps four stable tabs and respects initial selection', (
     tester,

@@ -1,0 +1,22 @@
+# Patient-app SRS and test audit (2026-10-08)
+
+Source: `docs/ping-my-therapist-srs.pdf`, sections 3.1-3.3 and use cases UC-01 to UC-07. This review covers the Flutter patient app only. It does not inspect or change the therapist/admin web portal, deployed Firebase rules, or production data. A passing isolated test proves the described local behavior, not a live end-to-end workflow.
+
+| SRS requirement | Flutter implementation and automated evidence | Status / next verification |
+| --- | --- | --- |
+| FR 3.2.1 / UC-01 registration, login, reset, authorized access | `email_pw_screen.dart`, `login_screen.dart`, router; password, field, keyboard, and signed-out route tests | Partial. Live Auth sign-up, sign-in, reset email, account recovery, and session restoration need a disposable-account device test. |
+| FR 3.2.2 / UC-03 AI companion | `moody_chatbot_service.dart`, `chatbot_screen.dart`, chat session service; mocked request, prompt boundary, crisis response, error, and serialization tests | Partial. A live Groq response, saved/reopened conversation, and clinical safety review are unverified. Tests cannot guarantee a model will always resist injection. |
+| FR 3.2.3 / UC-05 diary and coping tools | Journal editors/saved entries, breathing screens, mood tracker, music service; save/retry, ordering, exercise timing, narrow-layout, and fallback tests | Partial. Actual Firestore save/reload and Spotify availability need live checks. SRS entry analysis and adaptive recommendations are not established by these tests. |
+| FR 3.2.4 / UC-02 patient profile | `profile_screen.dart`, `edit_profile_screen.dart` load/update Firestore and Auth; route to profile exists | Partial. Name/age/occupation/email validation, save, permissions, verification link, and reload are not covered end to end by automated tests. Therapist profile is portal scope. |
+| FR 3.2.5 / UC-04 clinical summarization | Therapist-facing use case | Outside this Flutter audit; requires portal testing. |
+| FR 3.2.6 / UC-07 therapist directory | `appointment_service.dart` fetches verified therapists; model and availability tests | Partial. The current Flutter directory displays profiles, but no specialization/location/availability search controls were found in `appointment_screen.dart`. Live verification filtering and profile images need testing. |
+| FR 3.2.7 / UC-07 consultation booking | Appointment service creates pending records and streams the patient's bookings; parser and duplicate-window tests | Partial. Booking write, cross-client visibility, acceptance/rejection, notification, reminders, and cancellation need live or portal integration testing. No patient-side notification/reminder implementation was established in this audit. |
+| FR 3.2.8 early warning and biometrics | Mood records and local chat crisis reply exist | Not verified as specified. No sleep/resting-heart-rate collection or therapist-dashboard risk flag was established in the Flutter implementation. |
+| FR 3.2.9 consultation accept/reject/reschedule | Therapist-facing workflow; Flutter displays status labels | Outside patient-app control. Cross-client status and patient notification need portal/device testing. |
+| FR 3.2.10 admin approval / UC-06 services | Admin and therapist workflows | Outside this Flutter audit; requires portal and backend testing. |
+| NFR 3.3.1/3.3.5 usability, Android 10+ | Widget tests cover several phone widths, keyboard behavior, and navigation | Partial. Real Android 10+ device matrix, accessibility, and performance remain untested. |
+| NFR 3.3.2-3.3.4 security, latency, privacy/RBAC | Local config consistency and signed-out router tests | Unverified end to end. Deployed Firestore rules, encryption claims, authorization across accounts, 95th-percentile latency, and 500-user load require separate tests and evidence. |
+
+New test-only coverage in this pass: failed mood stream UI, chat-history length and forged-system-role handling, and invalid/boundary booking timestamps. These tests use injected streams or mocked HTTP and make no external writes.
+
+For a later live verification pass, use disposable patient and therapist accounts. Check sign-up/reset/sign-in; profile edit and reload; journal, mood, and chat save/reopen; booking creation and portal-to-patient status changes; and permission denial when another account attempts to read those records. This pass did not run those workflows or change production services.

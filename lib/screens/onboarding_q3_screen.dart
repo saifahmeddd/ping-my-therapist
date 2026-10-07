@@ -29,6 +29,7 @@ class _OnboardingQuestionThreeScreenState
 
   void _handleFinish() {
     final additionalText = _additionalContextController.text.trim();
+    FocusScope.of(context).unfocus();
     Navigator.of(context).pushReplacement(
       MaterialPageRoute(
         builder:
@@ -45,6 +46,7 @@ class _OnboardingQuestionThreeScreenState
 
   @override
   Widget build(BuildContext context) {
+    final keyboardVisible = MediaQuery.viewInsetsOf(context).bottom > 0;
     return Scaffold(
       appBar: AppBar(
         leading: CustomBackButton(iconColor: Colors.black87, iconSize: 24),
@@ -53,7 +55,8 @@ class _OnboardingQuestionThreeScreenState
       ),
       body: SafeArea(
         child: SingleChildScrollView(
-          padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 66.0),
+          keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
+          padding: EdgeInsets.fromLTRB(16, keyboardVisible ? 16 : 66, 16, 24),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: <Widget>[
@@ -97,6 +100,11 @@ class _OnboardingQuestionThreeScreenState
                 child: TextField(
                   controller: _additionalContextController,
                   maxLines: 4,
+                  textInputAction: TextInputAction.done,
+                  onSubmitted: (_) => FocusScope.of(context).unfocus(),
+                  onTapOutside:
+                      (_) => FocusManager.instance.primaryFocus?.unfocus(),
+                  scrollPadding: const EdgeInsets.only(bottom: 24),
                   style: const TextStyle(
                     fontFamily: 'General Sans',
                     fontSize: 14.0,

@@ -6,6 +6,7 @@ import 'package:intl/intl.dart';
 
 import 'package:ping_my_therapist/core/router/route_names.dart';
 import 'package:ping_my_therapist/theme/app_colors.dart';
+import 'package:ping_my_therapist/widgets/stretchy_section_page.dart';
 
 class MoodCheckinEntry {
   final String label;
@@ -65,7 +66,12 @@ class MoodTrackerScreen extends StatelessWidget {
 
   Stream<List<MoodCheckinEntry>> _watchCheckins() {
     if (checkinsStream case final stream?) return stream;
-    final user = FirebaseAuth.instance.currentUser;
+    User? user;
+    try {
+      user = FirebaseAuth.instance.currentUser;
+    } catch (_) {
+      return Stream.value(const []);
+    }
     if (user == null) return Stream.value(const []);
 
     return FirebaseFirestore.instance
@@ -88,126 +94,46 @@ class MoodTrackerScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: AppColors.background,
-      body: StreamBuilder<List<MoodCheckinEntry>>(
-        stream: _watchCheckins(),
-        builder: (context, snapshot) {
-          final entries = snapshot.data ?? const <MoodCheckinEntry>[];
-          return CustomScrollView(
-            physics: const BouncingScrollPhysics(),
-            slivers: [
-              const SliverToBoxAdapter(child: _TrackerHeader()),
-              SliverPadding(
-                padding: const EdgeInsets.fromLTRB(18, 18, 18, 32),
-                sliver: SliverList.list(
-                  children: [
-                    _CheckInCard(
-                      onQuickCheckIn:
-                          () => context.push('${RouteNames.mood}?from=tracker'),
-                      onNameFeelings:
-                          () => context.push(RouteNames.nameWhatYouFeel),
-                    ),
-                    const SizedBox(height: 16),
-                    if (snapshot.hasError)
-                      const _MessageCard(
-                        icon: Icons.cloud_off_rounded,
-                        title: 'Check-ins are temporarily unavailable',
-                        message:
-                            'Your data is safe. Check your connection and try again shortly.',
-                      )
-                    else if (snapshot.connectionState ==
-                            ConnectionState.waiting &&
-                        !snapshot.hasData)
-                      const _LoadingCard()
-                    else ...[
-                      _WeekOverview(entries: entries),
-                      const SizedBox(height: 16),
-                      _LatestReflection(
-                        entry: entries.isEmpty ? null : entries.first,
-                      ),
-                      const SizedBox(height: 16),
-                      _RecentCheckIns(entries: entries.take(5).toList()),
-                    ],
-                  ],
-                ),
+    return StreamBuilder<List<MoodCheckinEntry>>(
+      stream: _watchCheckins(),
+      builder: (context, snapshot) {
+        final entries = snapshot.data ?? const <MoodCheckinEntry>[];
+        return StretchySectionPage(
+          title: 'Mood Tracker',
+          subtitle: 'Notice patterns without judging them.',
+          icon: Icons.insights_rounded,
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              _CheckInCard(
+                onQuickCheckIn: () => context.push(RouteNames.moodCheckin),
+                onNameFeelings: () => context.push(RouteNames.nameWhatYouFeel),
               ),
-            ],
-          );
-        },
-      ),
-    );
-  }
-}
-
-class _TrackerHeader extends StatelessWidget {
-  const _TrackerHeader();
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.fromLTRB(22, 34, 22, 28),
-      decoration: const BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [Color(0xFF535394), Color(0xFF7777C7)],
-        ),
-        borderRadius: BorderRadius.only(
-          bottomLeft: Radius.circular(32),
-          bottomRight: Radius.circular(32),
-        ),
-      ),
-      child: const Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'Mood Tracker',
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontFamily: 'Quicksand',
-                    fontSize: 30,
-                    fontWeight: FontWeight.w700,
-                    letterSpacing: -0.7,
-                  ),
+              const SizedBox(height: 16),
+              if (snapshot.hasError)
+                const _MessageCard(
+                  icon: Icons.cloud_off_rounded,
+                  title: 'Check-ins are temporarily unavailable',
+                  message:
+                      'Your data is safe. Check your connection and try again shortly.',
+                )
+              else if (snapshot.connectionState == ConnectionState.waiting &&
+                  !snapshot.hasData)
+                const _LoadingCard()
+              else ...[
+                _WeekOverview(entries: entries),
+                const SizedBox(height: 16),
+                _LatestReflection(
+                  entry: entries.isEmpty ? null : entries.first,
                 ),
-                SizedBox(height: 7),
-                Text(
-                  'Notice patterns without judging them.',
-                  style: TextStyle(
-                    color: Color(0xD9FFFFFF),
-                    fontFamily: 'General Sans',
-                    fontSize: 13,
-                  ),
-                ),
+                const SizedBox(height: 16),
+                _RecentCheckIns(entries: entries.take(5).toList()),
               ],
-            ),
+            ],
           ),
-          SizedBox(width: 12),
-          _HeaderIcon(),
-        ],
-      ),
-    );
-  }
-}
-
-class _HeaderIcon extends StatelessWidget {
-  const _HeaderIcon();
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: 48,
-      height: 48,
-      decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.14),
-        borderRadius: BorderRadius.circular(16),
-      ),
-      child: const Icon(Icons.insights_rounded, color: Colors.white, size: 26),
+        );
+      },
     );
   }
 }

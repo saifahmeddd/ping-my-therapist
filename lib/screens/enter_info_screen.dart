@@ -13,12 +13,18 @@ class _EnterInfoScreenState extends State<EnterInfoScreen> {
   final TextEditingController _nameController = TextEditingController();
   final TextEditingController _ageController = TextEditingController();
   final TextEditingController _occupationController = TextEditingController();
+  final FocusNode _nameFocus = FocusNode();
+  final FocusNode _ageFocus = FocusNode();
+  final FocusNode _occupationFocus = FocusNode();
 
   @override
   void dispose() {
     _nameController.dispose();
     _ageController.dispose();
     _occupationController.dispose();
+    _nameFocus.dispose();
+    _ageFocus.dispose();
+    _occupationFocus.dispose();
     super.dispose();
   }
 
@@ -33,6 +39,8 @@ class _EnterInfoScreenState extends State<EnterInfoScreen> {
       );
       return;
     }
+
+    FocusScope.of(context).unfocus();
 
     Navigator.push(
       context,
@@ -49,24 +57,28 @@ class _EnterInfoScreenState extends State<EnterInfoScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final keyboardVisible = MediaQuery.viewInsetsOf(context).bottom > 0;
     return Scaffold(
       backgroundColor: Colors.white,
       body: SafeArea(
         child: Stack(
           children: [
-            Padding(
-              padding: const EdgeInsets.symmetric(
-                horizontal: 24.0,
-                vertical: 8.0,
-              ),
+            Positioned.fill(
               child: SingleChildScrollView(
-                padding: EdgeInsets.only(
-                  bottom: MediaQuery.of(context).viewInsets.bottom,
+                keyboardDismissBehavior:
+                    ScrollViewKeyboardDismissBehavior.onDrag,
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 24.0,
+                  vertical: 8.0,
                 ),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: <Widget>[
-                    const SizedBox(height: 160.0, width: 364),
+                    AnimatedContainer(
+                      duration: const Duration(milliseconds: 180),
+                      curve: Curves.easeOut,
+                      height: keyboardVisible ? 56.0 : 160.0,
+                    ),
                     const Text(
                       'Tell us about yourself',
                       style: TextStyle(
@@ -102,7 +114,10 @@ class _EnterInfoScreenState extends State<EnterInfoScreen> {
                     const SizedBox(height: 14),
                     _buildTextField(
                       controller: _nameController,
+                      focusNode: _nameFocus,
                       hintText: 'Jerry',
+                      textInputAction: TextInputAction.next,
+                      onSubmitted: (_) => _ageFocus.requestFocus(),
                     ),
                     const SizedBox(height: 12.0),
                     const Text(
@@ -117,8 +132,11 @@ class _EnterInfoScreenState extends State<EnterInfoScreen> {
                     const SizedBox(height: 4.0),
                     _buildTextField(
                       controller: _ageController,
+                      focusNode: _ageFocus,
                       hintText: '19',
                       keyboardType: TextInputType.number,
+                      textInputAction: TextInputAction.next,
+                      onSubmitted: (_) => _occupationFocus.requestFocus(),
                     ),
                     const SizedBox(height: 12.0),
                     const Text(
@@ -133,7 +151,10 @@ class _EnterInfoScreenState extends State<EnterInfoScreen> {
                     const SizedBox(height: 4.0),
                     _buildTextField(
                       controller: _occupationController,
+                      focusNode: _occupationFocus,
                       hintText: 'Student, Engineer, Artist...',
+                      textInputAction: TextInputAction.done,
+                      onSubmitted: (_) => FocusScope.of(context).unfocus(),
                     ),
                     const SizedBox(height: 4.0),
                     const Row(
@@ -222,8 +243,11 @@ class _EnterInfoScreenState extends State<EnterInfoScreen> {
 
   Widget _buildTextField({
     required TextEditingController controller,
+    required FocusNode focusNode,
     required String hintText,
     TextInputType keyboardType = TextInputType.text,
+    required TextInputAction textInputAction,
+    required ValueChanged<String> onSubmitted,
   }) {
     return Container(
       decoration: BoxDecoration(
@@ -238,7 +262,12 @@ class _EnterInfoScreenState extends State<EnterInfoScreen> {
       ),
       child: TextField(
         controller: controller,
+        focusNode: focusNode,
         keyboardType: keyboardType,
+        textInputAction: textInputAction,
+        onSubmitted: onSubmitted,
+        onTapOutside: (_) => FocusManager.instance.primaryFocus?.unfocus(),
+        scrollPadding: const EdgeInsets.only(bottom: 24),
         style: const TextStyle(
           fontFamily: 'General Sans',
           fontWeight: FontWeight.w500,
@@ -269,10 +298,7 @@ class _EnterInfoScreenState extends State<EnterInfoScreen> {
           ),
           focusedBorder: OutlineInputBorder(
             borderRadius: BorderRadius.circular(12.0),
-            borderSide: const BorderSide(
-              color: Color(0xFFBBB3FF),
-              width: 2.0,
-            ),
+            borderSide: const BorderSide(color: Color(0xFFBBB3FF), width: 2.0),
           ),
           filled: true,
           fillColor: Colors.grey[200],

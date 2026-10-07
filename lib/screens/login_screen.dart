@@ -22,13 +22,6 @@ class _LoginScreenState extends State<LoginScreen> {
   final FocusNode _passwordFocusNode = FocusNode();
 
   @override
-  void initState() {
-    super.initState();
-    _emailFocusNode.addListener(() => setState(() {}));
-    _passwordFocusNode.addListener(() => setState(() {}));
-  }
-
-  @override
   void dispose() {
     _emailFocusNode.dispose();
     _passwordFocusNode.dispose();
@@ -49,6 +42,7 @@ class _LoginScreenState extends State<LoginScreen> {
       return;
     }
 
+    FocusScope.of(context).unfocus();
     setState(() => _isLoading = true);
     try {
       final credential = await _auth.signInWithEmailAndPassword(
@@ -122,15 +116,14 @@ class _LoginScreenState extends State<LoginScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final keyboardVisible = MediaQuery.viewInsetsOf(context).bottom > 0;
     return Scaffold(
       backgroundColor: Colors.white,
       body: SafeArea(
         child: SingleChildScrollView(
+          keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
           child: Padding(
-            padding: const EdgeInsets.symmetric(
-              horizontal: 24.0,
-              vertical: 16.0,
-            ),
+            padding: const EdgeInsets.fromLTRB(24, 16, 24, 24),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.center,
               children: [
@@ -153,14 +146,26 @@ class _LoginScreenState extends State<LoginScreen> {
                     ),
                   ],
                 ),
-                const SizedBox(height: 20),
-                Center(
-                  child: SvgPicture.asset(
-                    'assets/images/happy-earth.svg',
-                    height: 140,
-                  ),
+                AnimatedSize(
+                  duration: const Duration(milliseconds: 180),
+                  curve: Curves.easeOut,
+                  alignment: Alignment.topCenter,
+                  child:
+                      keyboardVisible
+                          ? const SizedBox.shrink()
+                          : Column(
+                            children: [
+                              const SizedBox(height: 20),
+                              Center(
+                                child: SvgPicture.asset(
+                                  'assets/images/happy-earth.svg',
+                                  height: 140,
+                                ),
+                              ),
+                              const SizedBox(height: 24),
+                            ],
+                          ),
                 ),
-                const SizedBox(height: 24),
                 const Text(
                   'Welcome back!',
                   style: TextStyle(
@@ -171,7 +176,7 @@ class _LoginScreenState extends State<LoginScreen> {
                   ),
                   textAlign: TextAlign.center,
                 ),
-                const SizedBox(height: 32),
+                SizedBox(height: keyboardVisible ? 20 : 32),
                 Align(
                   alignment: Alignment.centerLeft,
                   child: const Text(
@@ -192,6 +197,8 @@ class _LoginScreenState extends State<LoginScreen> {
                   icon: Icons.email_outlined,
                   obscureText: false,
                   keyboardType: TextInputType.emailAddress,
+                  textInputAction: TextInputAction.next,
+                  onSubmitted: (_) => _passwordFocusNode.requestFocus(),
                 ),
                 const SizedBox(height: 16.0),
                 Align(
@@ -214,6 +221,8 @@ class _LoginScreenState extends State<LoginScreen> {
                   icon: Icons.lock_outline,
                   obscureText: true,
                   keyboardType: TextInputType.text,
+                  textInputAction: TextInputAction.done,
+                  onSubmitted: (_) => _login(),
                 ),
                 const SizedBox(height: 6.0),
                 Align(
@@ -236,7 +245,7 @@ class _LoginScreenState extends State<LoginScreen> {
                     ),
                   ),
                 ),
-                const SizedBox(height: 48.0),
+                SizedBox(height: keyboardVisible ? 24 : 48),
                 SizedBox(
                   width: double.infinity,
                   height: 48,
@@ -318,6 +327,8 @@ class _CustomInputField extends StatelessWidget {
   final IconData icon;
   final bool obscureText;
   final TextInputType keyboardType;
+  final TextInputAction textInputAction;
+  final ValueChanged<String> onSubmitted;
 
   const _CustomInputField({
     required this.controller,
@@ -326,6 +337,8 @@ class _CustomInputField extends StatelessWidget {
     required this.icon,
     required this.obscureText,
     required this.keyboardType,
+    required this.textInputAction,
+    required this.onSubmitted,
   });
 
   @override
@@ -337,6 +350,14 @@ class _CustomInputField extends StatelessWidget {
         focusNode: focusNode,
         obscureText: obscureText,
         keyboardType: keyboardType,
+        textInputAction: textInputAction,
+        onSubmitted: onSubmitted,
+        onTapOutside: (_) => FocusManager.instance.primaryFocus?.unfocus(),
+        autofillHints: [
+          obscureText ? AutofillHints.password : AutofillHints.email,
+        ],
+        autocorrect: false,
+        scrollPadding: const EdgeInsets.only(bottom: 24),
         style: const TextStyle(
           fontFamily: 'General Sans',
           fontSize: 12.0,

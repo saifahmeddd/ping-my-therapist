@@ -7,6 +7,8 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:ping_my_therapist/services/spotify_service.dart';
 import 'package:ping_my_therapist/widgets/custom_back_button.dart';
+import 'package:ping_my_therapist/widgets/pullable_section_header.dart';
+import 'package:ping_my_therapist/widgets/stretchy_section_page.dart';
 
 class MusicRecommendationScreen extends StatefulWidget {
   const MusicRecommendationScreen({super.key});
@@ -110,25 +112,33 @@ class _MusicRecommendationScreenState extends State<MusicRecommendationScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: Colors.white,
-      appBar: AppBar(
-        backgroundColor: Colors.white,
-        surfaceTintColor: Colors.white,
-        shadowColor: Colors.transparent,
-        foregroundColor: Colors.black,
-        elevation: 0,
-        leading: const CustomBackButton(
-          iconColor: Colors.black87,
-          iconSize: 24,
-        ),
-        systemOverlayStyle: const SystemUiOverlayStyle(
-          statusBarColor: Colors.white,
-          statusBarIconBrightness: Brightness.dark,
-          statusBarBrightness: Brightness.light,
+    return AnnotatedRegion<SystemUiOverlayStyle>(
+      value: SystemUiOverlayStyle.light,
+      child: Scaffold(
+        backgroundColor: sectionPurple,
+        body: SafeArea(
+          child: Column(
+            children: [
+              const PullableSectionHeader(
+                title: 'Music Therapy',
+                subtitle: 'Find something that fits this moment.',
+                leading: CustomBackButton(
+                  iconColor: Colors.white,
+                  iconSize: 24,
+                ),
+              ),
+              Expanded(
+                child: ClipRRect(
+                  borderRadius: const BorderRadius.vertical(
+                    top: Radius.circular(30),
+                  ),
+                  child: ColoredBox(color: Colors.white, child: _buildBody()),
+                ),
+              ),
+            ],
+          ),
         ),
       ),
-      body: _buildBody(),
     );
   }
 
@@ -296,7 +306,7 @@ class _MusicRecommendationScreenState extends State<MusicRecommendationScreen> {
                 elevation: 0,
               ),
               child: const Text(
-                'Mood Check-In',
+                'Open Mood Tracker',
                 style: TextStyle(
                   fontFamily: 'General Sans',
                   fontWeight: FontWeight.w600,
@@ -340,17 +350,6 @@ class _MusicRecommendationScreenState extends State<MusicRecommendationScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text(
-            'Music Therapy',
-            style: TextStyle(
-              fontFamily: 'quicksand',
-              fontSize: 28,
-              fontWeight: FontWeight.bold,
-              letterSpacing: -0.7,
-              color: Colors.black87,
-            ),
-          ),
-          const SizedBox(height: 6),
           Text(
             _usingFallback
                 ? 'Curated playlists for your wellbeing'
@@ -394,7 +393,7 @@ class _MusicRecommendationScreenState extends State<MusicRecommendationScreen> {
           const SizedBox(width: 10),
           Expanded(
             child: Text(
-              'Add your Spotify credentials in .env for personalised recommendations.',
+              'Spotify is unavailable right now. Explore these playlists instead.',
               style: TextStyle(
                 fontFamily: 'General Sans',
                 fontSize: 12,

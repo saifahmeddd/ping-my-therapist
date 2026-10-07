@@ -83,8 +83,7 @@ class TherapistInfo {
       email: (data['email'] as String?) ?? '',
       bio: (data['bio'] as String?) ?? '',
       specializations: List<String>.from(data['specializations'] ?? []),
-      yearsOfExperience:
-          (data['yearsOfExperience'] as num?)?.toInt() ?? 0,
+      yearsOfExperience: (data['yearsOfExperience'] as num?)?.toInt() ?? 0,
       profilePhoto: data['profilePhoto'] as String?,
       availability: normalizeAvailability(data['availability'] ?? []),
     );
@@ -155,6 +154,32 @@ class AppointmentModel {
   }
 }
 
+bool containsPendingAppointment(
+  Iterable<Map<String, dynamic>> appointments,
+  String therapistUid,
+  DateTime scheduledAt,
+) {
+  for (final appointment in appointments) {
+    if (appointment['therapistUid'] != therapistUid ||
+        (appointment['status'] as String?)?.toLowerCase() != 'pending') {
+      continue;
+    }
+    final raw = appointment['scheduledAt'];
+    final appointmentTime =
+        raw is Timestamp
+            ? raw.toDate()
+            : raw is String
+            ? DateTime.tryParse(raw)
+            : null;
+    if (appointmentTime != null &&
+        appointmentTime.difference(scheduledAt).abs() <
+            const Duration(minutes: 5)) {
+      return true;
+    }
+  }
+  return false;
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 // Service
 // ─────────────────────────────────────────────────────────────────────────────
@@ -165,10 +190,11 @@ class AppointmentService {
 
   /// Fetch all admin-approved therapists from the `therapists` collection.
   Future<List<TherapistInfo>> getVerifiedTherapists() async {
-    final snapshot = await _db
-        .collection('therapists')
-        .where('verified', isEqualTo: true)
-        .get();
+    final snapshot =
+        await _db
+            .collection('therapists')
+            .where('verified', isEqualTo: true)
+            .get();
 
     return snapshot.docs
         .where((doc) {
@@ -191,31 +217,22 @@ class AppointmentService {
   /// Returns true if the patient already has a pending request
   /// for the same therapist within 5 minutes of [scheduledAt].
   Future<bool> hasPendingRequest(
-      String therapistUid, DateTime scheduledAt) async {
+    String therapistUid,
+    DateTime scheduledAt,
+  ) async {
     final user = _auth.currentUser;
     if (user == null) return false;
 
-    final snapshot = await _db
-        .collection('appointments')
-        .where('patientId', isEqualTo: user.uid)
-        .where('therapistUid', isEqualTo: therapistUid)
-        .where('status', isEqualTo: 'pending')
-        .get();
-
-    for (final doc in snapshot.docs) {
-      final raw = doc.data()['scheduledAt'];
-      DateTime? apptTime;
-      if (raw is Timestamp) {
-        apptTime = raw.toDate();
-      } else if (raw is String) {
-        apptTime = DateTime.tryParse(raw);
-      }
-      if (apptTime != null) {
-        final diff = apptTime.difference(scheduledAt).abs();
-        if (diff.inMinutes < 5) return true;
-      }
-    }
-    return false;
+    final snapshot =
+        await _db
+            .collection('appointments')
+            .where('patientId', isEqualTo: user.uid)
+            .get();
+    return containsPendingAppointment(
+      snapshot.docs.map((doc) => doc.data()),
+      therapistUid,
+      scheduledAt,
+    );
   }
 
   /// Creates an appointment request document in Firestore.
@@ -267,11 +284,12 @@ class AppointmentService {
         .where('patientId', isEqualTo: user.uid)
         .snapshots()
         .map((snap) {
-      final list = snap.docs
-          .map((doc) => AppointmentModel.fromMap(doc.id, doc.data()))
-          .toList()
-        ..sort((a, b) => b.scheduledAt.compareTo(a.scheduledAt));
-      return list;
-    });
+          final list =
+              snap.docs
+                  .map((doc) => AppointmentModel.fromMap(doc.id, doc.data()))
+                  .toList()
+                ..sort((a, b) => b.scheduledAt.compareTo(a.scheduledAt));
+          return list;
+        });
   }
 }

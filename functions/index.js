@@ -35,7 +35,7 @@ const GROQ_API_KEY = defineSecret("GROQ_API_KEY");
 // ─── Constants ────────────────────────────────────────────────────────────────
 
 const GROQ_API_URL = "https://api.groq.com/openai/v1/chat/completions";
-const GROQ_MODEL = "llama-3.1-8b-instant";
+const GROQ_MODEL = "openai/gpt-oss-20b";
 
 const SYSTEM_PROMPT = `You are Moody, a warm and supportive mental-health companion inside the "Ping My Therapist" app.
 
@@ -187,7 +187,8 @@ exports.chatWithMoody = onCall(
         body: JSON.stringify({
           model: GROQ_MODEL,
           messages,
-          max_tokens: 300,
+          max_completion_tokens: 512,
+          reasoning_effort: "low",
           temperature: 0.65,
           stop: null,
         }),

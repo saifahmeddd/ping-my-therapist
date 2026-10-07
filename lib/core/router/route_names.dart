@@ -10,6 +10,7 @@ abstract final class RouteNames {
   static const journaling = '/journaling';
   static const exercises = '/exercises';
   static const mood = '/mood';
+  static const moodCheckin = '/mood/check-in';
   static const appointments = '/appointments';
   static const music = '/music';
   static const nameWhatYouFeel = '/name-what-you-feel';

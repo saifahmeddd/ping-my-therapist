@@ -527,12 +527,16 @@ class BreathingExerciseIntroScreen extends StatelessWidget {
                           child: const Row(
                             mainAxisAlignment: MainAxisAlignment.center,
                             children: [
-                              Text(
-                                'Start guided breathing',
-                                style: TextStyle(
-                                  fontFamily: 'General Sans',
-                                  fontSize: 14,
-                                  fontWeight: FontWeight.w600,
+                              Flexible(
+                                child: Text(
+                                  'Start guided breathing',
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: TextStyle(
+                                    fontFamily: 'General Sans',
+                                    fontSize: 14,
+                                    fontWeight: FontWeight.w600,
+                                  ),
                                 ),
                               ),
                               SizedBox(width: 8),
@@ -575,6 +579,7 @@ class _GuidedBreathingScreenState extends State<GuidedBreathingScreen>
   bool _paused = false;
   bool _completed = false;
   bool _advancing = false;
+  bool _allowExit = false;
 
   BreathPhase get _phase => widget.exercise.phases[_phaseIndex];
 
@@ -668,6 +673,7 @@ class _GuidedBreathingScreenState extends State<GuidedBreathingScreen>
 
   void _restart() {
     _countdownTimer?.cancel();
+    _countdownTimer = null;
     _phaseController.stop();
     setState(() {
       _phaseIndex = 0;
@@ -726,6 +732,7 @@ class _GuidedBreathingScreenState extends State<GuidedBreathingScreen>
 
     if (!mounted) return;
     if (leave == true) {
+      setState(() => _allowExit = true);
       Navigator.of(context).pop();
     } else if (wasRunning) {
       _phaseController.forward();
@@ -752,7 +759,7 @@ class _GuidedBreathingScreenState extends State<GuidedBreathingScreen>
   @override
   Widget build(BuildContext context) {
     return PopScope(
-      canPop: !_started || _completed,
+      canPop: !_started || _completed || _allowExit,
       onPopInvokedWithResult: (didPop, _) {
         if (!didPop) _requestExit();
       },
@@ -847,10 +854,13 @@ class _GuidedBreathingScreenState extends State<GuidedBreathingScreen>
             ),
             Expanded(
               child: Center(
-                child:
-                    !_started
-                        ? _buildReadyState()
-                        : _buildBreather(scale, phaseRemaining),
+                child: FittedBox(
+                  fit: BoxFit.scaleDown,
+                  child:
+                      !_started
+                          ? SizedBox(width: 310, child: _buildReadyState())
+                          : _buildBreather(scale, phaseRemaining),
+                ),
               ),
             ),
             if (_started) ...[
@@ -1084,7 +1094,7 @@ class _GuidedBreathingScreenState extends State<GuidedBreathingScreen>
   }
 
   Widget _buildCompletion() {
-    return Padding(
+    return SingleChildScrollView(
       padding: const EdgeInsets.fromLTRB(24, 18, 24, 28),
       child: Column(
         children: [
@@ -1096,10 +1106,10 @@ class _GuidedBreathingScreenState extends State<GuidedBreathingScreen>
               iconSize: 24,
             ),
           ),
-          const Spacer(),
+          const SizedBox(height: 24),
           Container(
-            width: 250,
-            height: 250,
+            width: 190,
+            height: 190,
             padding: const EdgeInsets.all(26),
             decoration: BoxDecoration(
               color: Colors.white.withValues(alpha: 0.12),
@@ -1151,7 +1161,7 @@ class _GuidedBreathingScreenState extends State<GuidedBreathingScreen>
               ),
             ),
           ),
-          const Spacer(),
+          const SizedBox(height: 28),
           SizedBox(
             width: double.infinity,
             height: 49,

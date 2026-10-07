@@ -2,16 +2,18 @@ import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:ping_my_therapist/services/patient_link_service.dart';
-import 'package:ping_my_therapist/widgets/custom_back_button.dart';
+import 'package:ping_my_therapist/widgets/journal_editor_layout.dart';
 
 class JournalEntryScreen extends StatefulWidget {
   final String prompt;
   final List<String> tips;
+  final Future<void> Function(String entry)? saveEntry;
 
   const JournalEntryScreen({
     super.key,
     required this.prompt,
     required this.tips,
+    this.saveEntry,
   });
 
   @override
@@ -20,6 +22,7 @@ class JournalEntryScreen extends StatefulWidget {
 
 class _JournalEntryScreenState extends State<JournalEntryScreen> {
   final TextEditingController _controller = TextEditingController();
+  bool _saving = false;
 
   @override
   void dispose() {
@@ -28,8 +31,10 @@ class _JournalEntryScreenState extends State<JournalEntryScreen> {
   }
 
   Future<void> _saveEntry() async {
-    final user = FirebaseAuth.instance.currentUser;
-    if (user == null) {
+    if (_saving) return;
+    final user =
+        widget.saveEntry == null ? FirebaseAuth.instance.currentUser : null;
+    if (widget.saveEntry == null && user == null) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('You must be logged in to save entries.')),
       );
@@ -37,123 +42,53 @@ class _JournalEntryScreenState extends State<JournalEntryScreen> {
     }
     final entryText = _controller.text.trim();
     if (entryText.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Entry cannot be empty.')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Entry cannot be empty.')));
       return;
     }
+    setState(() => _saving = true);
     try {
-      final therapistUid = await PatientLinkService().getTherapistUid();
-
-      final payload = <String, dynamic>{
-        'userId': user.uid,
-        'entry': entryText,
-        'prompt': widget.prompt,
-        'timestamp': FieldValue.serverTimestamp(),
-      };
-      if (therapistUid != null) {
-        payload['therapistUid'] = therapistUid;
+      if (widget.saveEntry case final save?) {
+        await save(entryText);
+      } else {
+        final therapistUid = await PatientLinkService().getTherapistUid();
+        final payload = <String, dynamic>{
+          'userId': user!.uid,
+          'entry': entryText,
+          'prompt': widget.prompt,
+          'timestamp': FieldValue.serverTimestamp(),
+        };
+        if (therapistUid != null) payload['therapistUid'] = therapistUid;
+        await FirebaseFirestore.instance
+            .collection('journal_entries')
+            .add(payload);
       }
-
-      await FirebaseFirestore.instance
-          .collection('journal_entries')
-          .add(payload);
       if (!mounted) return;
       FocusScope.of(context).unfocus();
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Entry saved!')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Entry saved!')));
       _controller.clear();
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Failed to save: ${e.toString()}')),
       );
+    } finally {
+      if (mounted) setState(() => _saving = false);
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: Colors.white,
-      body: SafeArea(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Padding(
-              padding: const EdgeInsets.only(left: 8, top: 8, bottom: 8),
-              child: CustomBackButton(iconColor: Colors.black87, iconSize: 28),
-            ),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
-              child: Text(
-                widget.prompt,
-                style: const TextStyle(
-                  fontFamily: 'quicksand',
-                  fontWeight: FontWeight.bold,
-                  fontSize: 18,
-                  color: Colors.black,
-                  letterSpacing: -0.5,
-                ),
-              ),
-            ),
-            const SizedBox(height: 16),
-            Expanded(
-              child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 24),
-                child: TextField(
-                  controller: _controller,
-                  maxLines: null,
-                  expands: true,
-                  style: const TextStyle(
-                    fontFamily: 'quicksand',
-                    fontSize: 16,
-                    color: Colors.black,
-                  ),
-                  decoration: const InputDecoration(
-                    hintText:
-                        'Start writing your thoughts here...\n(You can always add more later)',
-                    hintStyle: TextStyle(
-                      fontFamily: 'quicksand',
-                      fontSize: 15,
-                      color: Colors.black38,
-                    ),
-                    border: InputBorder.none,
-                    contentPadding: EdgeInsets.zero,
-                    filled: false,
-                  ),
-                  textInputAction: TextInputAction.newline,
-                  keyboardType: TextInputType.multiline,
-                ),
-              ),
-            ),
-            Padding(
-              padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
-              child: SizedBox(
-                width: double.infinity,
-                height: 52,
-                child: ElevatedButton.icon(
-                  onPressed: _saveEntry,
-                  icon: const Icon(Icons.bookmark_border),
-                  label: const Text('Save Entry'),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF7D7DDE),
-                    foregroundColor: Colors.white,
-                    textStyle: const TextStyle(
-                      fontFamily: 'quicksand',
-                      fontWeight: FontWeight.w600,
-                      fontSize: 14,
-                    ),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(6),
-                    ),
-                  ),
-                ),
-              ),
-            ),
-          ],
-        ),
-      ),
+    return JournalEditorLayout(
+      title: widget.prompt,
+      subtitle: 'Take your time. There is no right way to answer.',
+      tips: widget.tips,
+      controller: _controller,
+      onSave: _saveEntry,
+      isSaving: _saving,
     );
   }
 }

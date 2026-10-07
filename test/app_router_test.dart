@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
 import 'package:ping_my_therapist/core/router/app_router.dart';
@@ -19,6 +20,7 @@ void main() {
       RouteNames.journaling,
       RouteNames.exercises,
       RouteNames.mood,
+      RouteNames.moodCheckin,
       RouteNames.appointments,
       RouteNames.music,
       RouteNames.nameWhatYouFeel,
@@ -52,5 +54,38 @@ void main() {
     await tester.ensureVisible(logIn);
     await tester.tap(logIn);
     expect(router.state.uri.path, RouteNames.login);
+  });
+
+  testWidgets('signed-out users cannot open patient-only destinations', (
+    tester,
+  ) async {
+    final container = ProviderContainer();
+    addTearDown(container.dispose);
+    final router = container.read(goRouterProvider);
+    addTearDown(router.dispose);
+
+    await tester.pumpWidget(
+      UncontrolledProviderScope(
+        container: container,
+        child: MaterialApp.router(routerConfig: router, theme: AppTheme.light),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    for (final protectedPath in [
+      RouteNames.home,
+      RouteNames.chatbot,
+      RouteNames.journaling,
+      RouteNames.exercises,
+      RouteNames.mood,
+      RouteNames.moodCheckin,
+      RouteNames.appointments,
+      RouteNames.music,
+      RouteNames.nameWhatYouFeel,
+    ]) {
+      router.go(protectedPath);
+      await tester.pumpAndSettle();
+      expect(router.state.uri.path, RouteNames.signup, reason: protectedPath);
+    }
   });
 }

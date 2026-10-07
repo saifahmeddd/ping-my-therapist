@@ -1,4 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:ping_my_therapist/widgets/stretchy_section_page.dart';
+import 'package:ping_my_therapist/widgets/pullable_section_header.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:ping_my_therapist/services/chatbot.dart';
 import 'package:ping_my_therapist/services/moody_chatbot_service.dart';
@@ -55,7 +58,36 @@ class _ChatbotScreenState extends State<ChatbotScreen>
     try {
       final sessions = await _chatSessionService.getUserChatSessions();
       if (mounted) setState(() => _chatSessions = sessions);
-    } catch (_) {}
+    } catch (_) {
+      _showPersistenceError('Could not load past conversations. Please retry.');
+    }
+  }
+
+  void _showPersistenceError(String message) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text(message)));
+  }
+
+  void _offerReplySaveRetry(String sessionId, ChatMessage reply) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: const Text('The reply was not saved to chat history.'),
+        action: SnackBarAction(
+          label: 'Retry',
+          onPressed: () async {
+            try {
+              await _chatSessionService.addMessageToSession(sessionId, reply);
+              _showPersistenceError('Reply saved to chat history.');
+            } catch (_) {
+              _offerReplySaveRetry(sessionId, reply);
+            }
+          },
+        ),
+      ),
+    );
   }
 
   void _toggleSidebar() {
@@ -119,9 +151,17 @@ class _ChatbotScreenState extends State<ChatbotScreen>
           _isLoading = false;
         });
         _scrollToBottom();
+      } else if (mounted) {
+        setState(() => _isLoading = false);
+        _showPersistenceError('This conversation could not be found.');
       }
     } catch (_) {
-      if (mounted) setState(() => _isLoading = false);
+      if (mounted) {
+        setState(() => _isLoading = false);
+        _showPersistenceError(
+          'Could not load this conversation. Please retry.',
+        );
+      }
     }
   }
 
@@ -132,7 +172,10 @@ class _ChatbotScreenState extends State<ChatbotScreen>
           (ctx) => AlertDialog(
             title: const Text(
               'Delete Conversation',
-              style: TextStyle(fontFamily: 'General Sans', fontWeight: FontWeight.w600),
+              style: TextStyle(
+                fontFamily: 'General Sans',
+                fontWeight: FontWeight.w600,
+              ),
             ),
             content: const Text(
               'Are you sure you want to delete this conversation?',
@@ -141,20 +184,51 @@ class _ChatbotScreenState extends State<ChatbotScreen>
             actions: [
               TextButton(
                 onPressed: () => Navigator.pop(ctx, false),
-                child: const Text('Cancel', style: TextStyle(color: Colors.grey)),
+                child: const Text(
+                  'Cancel',
+                  style: TextStyle(color: Colors.grey),
+                ),
               ),
               TextButton(
                 onPressed: () => Navigator.pop(ctx, true),
-                child: const Text('Delete', style: TextStyle(color: Colors.red, fontWeight: FontWeight.w600)),
+                child: const Text(
+                  'Delete',
+                  style: TextStyle(
+                    color: Colors.red,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
               ),
             ],
           ),
     );
     if (shouldDelete == true) {
-      await _chatSessionService.deleteChatSession(sessionId);
-      if (_currentSessionId == sessionId) _currentSessionId = null;
-      await _loadChatSessions();
+      try {
+        await _chatSessionService.deleteChatSession(sessionId);
+        if (_currentSessionId == sessionId) {
+          _startNewChat();
+        }
+        await _loadChatSessions();
+      } catch (_) {
+        _showPersistenceError(
+          'Could not delete this conversation. Please retry.',
+        );
+      }
     }
+  }
+
+  void _restoreUnstoredMessage(String message, ChatMessage chatMessage) {
+    if (!mounted) return;
+    setState(() {
+      _messages.removeLast(); // Typing indicator.
+      _messages.removeLast(); // Unstored user message.
+      _controller.text = message;
+      _isLoading = false;
+    });
+    _chatHistory.remove(chatMessage);
+    _showPersistenceError(
+      'Could not save your message. Please try sending it again.',
+    );
   }
 
   void _sendMessage() async {
@@ -173,10 +247,13 @@ class _ChatbotScreenState extends State<ChatbotScreen>
     _chatHistory.add(userChatMsg);
     _trimHistory();
 
-    if (_currentSessionId == null && _chatHistory.length > 1) {
+    if (_currentSessionId == null) {
       try {
         _currentSessionId = await _chatSessionService.createChatSession();
-      } catch (_) {}
+      } catch (_) {
+        _restoreUnstoredMessage(userMessage, userChatMsg);
+        return;
+      }
     }
 
     if (_currentSessionId != null) {
@@ -185,7 +262,10 @@ class _ChatbotScreenState extends State<ChatbotScreen>
           _currentSessionId!,
           userChatMsg,
         );
-      } catch (_) {}
+      } catch (_) {
+        _restoreUnstoredMessage(userMessage, userChatMsg);
+        return;
+      }
     }
 
     try {
@@ -202,9 +282,12 @@ class _ChatbotScreenState extends State<ChatbotScreen>
       _chatHistory.add(aiMsg);
       _trimHistory();
       if (_currentSessionId != null) {
+        final sessionId = _currentSessionId!;
         try {
-          await _chatSessionService.addMessageToSession(_currentSessionId!, aiMsg);
-        } catch (_) {}
+          await _chatSessionService.addMessageToSession(sessionId, aiMsg);
+        } catch (_) {
+          _offerReplySaveRetry(sessionId, aiMsg);
+        }
       }
     } catch (e) {
       if (!mounted) return;
@@ -217,7 +300,8 @@ class _ChatbotScreenState extends State<ChatbotScreen>
   }
 
   void _addErrorMessage([String? custom]) {
-    final msg = custom ?? "I'm sorry, there was a connection issue. Please try again.";
+    final msg =
+        custom ?? "I'm sorry, there was a connection issue. Please try again.";
     setState(() => _messages.add(_ChatMessage(text: msg, isUser: false)));
     _chatHistory.add(ChatMessage(role: 'assistant', content: msg));
   }
@@ -253,160 +337,236 @@ class _ChatbotScreenState extends State<ChatbotScreen>
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: Colors.white,
-      appBar: AppBar(
-        backgroundColor: Colors.white,
-        elevation: 0,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios_new_rounded, color: Color(0xFF3A3075)),
-          onPressed: () => Navigator.pop(context),
-        ),
-        title: const Text(
-          'Safe Space',
-          style: TextStyle(
-            color: Color(0xFF3A3075),
-            fontFamily: 'quicksand',
-            fontWeight: FontWeight.w700,
-            fontSize: 22,
-            letterSpacing: -0.5,
-          ),
-        ),
-        centerTitle: true,
-        actions: [
-          Padding(
-            padding: const EdgeInsets.only(right: 16),
-            child: GestureDetector(
-              onTap: _toggleSidebar,
-              child: SvgPicture.asset(
-                'assets/icons/chatbubble.svg',
-                width: 24,
-                height: 24,
-                colorFilter: const ColorFilter.mode(
-                  Color(0xFF3A3075),
-                  BlendMode.srcIn,
+    return AnnotatedRegion<SystemUiOverlayStyle>(
+      value: SystemUiOverlayStyle.light,
+      child: Scaffold(
+        backgroundColor: sectionPurple,
+        body: SafeArea(
+          child: Column(
+            children: [
+              AnimatedSize(
+                duration: const Duration(milliseconds: 280),
+                curve: Curves.easeInOutCubic,
+                child: PullableSectionHeader(
+                  title: 'Safe Space',
+                  subtitle: 'A quiet place to talk things through.',
+                  compact: _messages.any((message) => message.isUser),
+                  leading: IconButton(
+                    icon: const Icon(
+                      Icons.arrow_back_ios_new_rounded,
+                      color: Colors.white,
+                    ),
+                    onPressed: () => Navigator.pop(context),
+                  ),
+                  trailing: IconButton(
+                    tooltip: 'Chat history',
+                    onPressed: _toggleSidebar,
+                    icon: SvgPicture.asset(
+                      'assets/icons/chatbubble.svg',
+                      width: 24,
+                      height: 24,
+                      colorFilter: const ColorFilter.mode(
+                        Colors.white,
+                        BlendMode.srcIn,
+                      ),
+                    ),
+                  ),
                 ),
               ),
-            ),
-          ),
-        ],
-      ),
-      body: Stack(
-        children: [
-          Positioned.fill(
-            child: Column(
-              children: [
-                Expanded(
-                  child: ListView.builder(
-                    controller: _scrollController,
-                    padding: const EdgeInsets.symmetric(vertical: 24, horizontal: 12),
-                    itemCount: _messages.length,
-                    itemBuilder: (context, index) {
-                      final msg = _messages[index];
-                      return Align(
-                        alignment: msg.isUser ? Alignment.centerRight : Alignment.centerLeft,
-                        child: Container(
-                          margin: EdgeInsets.only(
-                            top: index == 0 ? 0 : 12,
-                            left: msg.isUser ? 60 : 0,
-                            right: msg.isUser ? 0 : 60,
+              Expanded(
+                child: ClipRRect(
+                  borderRadius: const BorderRadius.vertical(
+                    top: Radius.circular(30),
+                  ),
+                  child: ColoredBox(
+                    color: const Color(0xFFF7F6FF),
+                    child: Stack(
+                      children: [
+                        Positioned.fill(
+                          child: Column(
+                            children: [
+                              Expanded(
+                                child: ListView.builder(
+                                  controller: _scrollController,
+                                  padding: const EdgeInsets.symmetric(
+                                    vertical: 24,
+                                    horizontal: 16,
+                                  ),
+                                  itemCount: _messages.length,
+                                  itemBuilder: (context, index) {
+                                    final msg = _messages[index];
+                                    return Align(
+                                      alignment:
+                                          msg.isUser
+                                              ? Alignment.centerRight
+                                              : Alignment.centerLeft,
+                                      child: Container(
+                                        margin: EdgeInsets.only(
+                                          top: index == 0 ? 0 : 12,
+                                          left: msg.isUser ? 36 : 0,
+                                          right: msg.isUser ? 0 : 36,
+                                        ),
+                                        padding: const EdgeInsets.symmetric(
+                                          horizontal: 16,
+                                          vertical: 12,
+                                        ),
+                                        decoration: BoxDecoration(
+                                          color:
+                                              msg.isUser
+                                                  ? sectionPurple
+                                                  : Colors.white,
+                                          borderRadius: BorderRadius.only(
+                                            topLeft: const Radius.circular(20),
+                                            topRight: const Radius.circular(20),
+                                            bottomLeft: Radius.circular(
+                                              msg.isUser ? 20 : 4,
+                                            ),
+                                            bottomRight: Radius.circular(
+                                              msg.isUser ? 4 : 20,
+                                            ),
+                                          ),
+                                        ),
+                                        child:
+                                            msg.isTyping
+                                                ? const _TypingIndicator()
+                                                : Text(
+                                                  msg.text,
+                                                  style: TextStyle(
+                                                    color:
+                                                        msg.isUser
+                                                            ? Colors.white
+                                                            : const Color(
+                                                              0xFF3A3075,
+                                                            ),
+                                                    fontSize: 16,
+                                                    fontWeight: FontWeight.w400,
+                                                  ),
+                                                ),
+                                      ),
+                                    );
+                                  },
+                                ),
+                              ),
+                              Container(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 14,
+                                  vertical: 8,
+                                ),
+                                color: Colors.white,
+                                child: Row(
+                                  children: [
+                                    Expanded(
+                                      child: TextField(
+                                        controller: _controller,
+                                        onSubmitted: (_) => _sendMessage(),
+                                        enabled: !_isSidebarOpen,
+                                        maxLines: 1,
+                                        textInputAction: TextInputAction.send,
+                                        decoration: InputDecoration(
+                                          hintText:
+                                              "Share what's on your mind...",
+                                          hintStyle: const TextStyle(
+                                            color: Colors.grey,
+                                          ),
+                                          filled: true,
+                                          fillColor: const Color(0xFFF5F5FA),
+                                          isDense: true,
+                                          contentPadding:
+                                              const EdgeInsets.symmetric(
+                                                horizontal: 16,
+                                                vertical: 10,
+                                              ),
+                                          border: OutlineInputBorder(
+                                            borderRadius: BorderRadius.circular(
+                                              14,
+                                            ),
+                                            borderSide: BorderSide.none,
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                    const SizedBox(width: 8),
+                                    IconButton(
+                                      tooltip: 'Send message',
+                                      icon: Icon(
+                                        _isLoading
+                                            ? Icons.hourglass_empty
+                                            : Icons.send_rounded,
+                                        color: Colors.white,
+                                      ),
+                                      iconSize: 20,
+                                      constraints:
+                                          const BoxConstraints.tightFor(
+                                            width: 44,
+                                            height: 42,
+                                          ),
+                                      padding: EdgeInsets.zero,
+                                      style: IconButton.styleFrom(
+                                        backgroundColor:
+                                            _isLoading
+                                                ? Colors.grey
+                                                : sectionPurple,
+                                        shape: RoundedRectangleBorder(
+                                          borderRadius: BorderRadius.circular(
+                                            14,
+                                          ),
+                                        ),
+                                      ),
+                                      onPressed:
+                                          (_isLoading || _isSidebarOpen)
+                                              ? null
+                                              : _sendMessage,
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ],
                           ),
-                          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
-                          decoration: BoxDecoration(
-                            color: msg.isUser ? const Color(0xFF6868B9) : const Color(0xFFF6F5FB),
-                            borderRadius: BorderRadius.only(
-                              topLeft: const Radius.circular(20),
-                              topRight: const Radius.circular(20),
-                              bottomLeft: Radius.circular(msg.isUser ? 20 : 4),
-                              bottomRight: Radius.circular(msg.isUser ? 4 : 20),
-                            ),
-                          ),
-                          child: msg.isTyping
-                              ? const _TypingIndicator()
-                              : Text(
-                                  msg.text,
-                                  style: TextStyle(
-                                    color: msg.isUser ? Colors.white : const Color(0xFF3A3075),
-                                    fontSize: 16,
-                                    fontWeight: FontWeight.w400,
+                        ),
+
+                        if (_isSidebarOpen)
+                          AnimatedBuilder(
+                            animation: _overlayAnimation,
+                            builder:
+                                (context, _) => Positioned.fill(
+                                  child: GestureDetector(
+                                    onTap: _closeSidebar,
+                                    child: Container(
+                                      color: Colors.black.withValues(
+                                        alpha: _overlayAnimation.value,
+                                      ),
+                                    ),
                                   ),
                                 ),
-                        ),
-                      );
-                    },
-                  ),
-                ),
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                  color: Colors.white,
-                  child: Row(
-                    children: [
-                      Expanded(
-                        child: TextField(
-                          controller: _controller,
-                          onSubmitted: (_) => _sendMessage(),
-                          enabled: !_isSidebarOpen,
-                          decoration: InputDecoration(
-                            hintText: "Share what's on your mind...",
-                            hintStyle: const TextStyle(color: Colors.grey),
-                            filled: true,
-                            fillColor: const Color(0xFFF5F5FA),
-                            contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                            border: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(24),
-                              borderSide: BorderSide.none,
-                            ),
                           ),
-                        ),
-                      ),
-                      const SizedBox(width: 8),
-                      CircleAvatar(
-                        backgroundColor: _isLoading ? Colors.grey : const Color(0xFF6868B9),
-                        radius: 26,
-                        child: IconButton(
-                          icon: Icon(
-                            _isLoading ? Icons.hourglass_empty : Icons.send,
-                            color: Colors.white,
-                          ),
-                          onPressed: (_isLoading || _isSidebarOpen) ? null : _sendMessage,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-          ),
 
-          if (_isSidebarOpen)
-            AnimatedBuilder(
-              animation: _overlayAnimation,
-              builder: (context, _) => Positioned.fill(
-                child: GestureDetector(
-                  onTap: _closeSidebar,
-                  child: Container(
-                    color: Colors.black.withValues(alpha: _overlayAnimation.value),
+                        AnimatedBuilder(
+                          animation: _sidebarAnimation,
+                          builder:
+                              (context, _) => Positioned(
+                                top: 0,
+                                right:
+                                    MediaQuery.of(context).size.width *
+                                    _sidebarAnimation.value *
+                                    -1,
+                                bottom: 0,
+                                child: ChatSidebar(
+                                  onClose: _closeSidebar,
+                                  onNewChat: _startNewChat,
+                                  onConversationTap: _loadConversation,
+                                  onConversationDelete: _deleteConversation,
+                                  chatSessions: _chatSessions,
+                                ),
+                              ),
+                        ),
+                      ],
+                    ),
                   ),
                 ),
               ),
-            ),
-
-          AnimatedBuilder(
-            animation: _sidebarAnimation,
-            builder: (context, _) => Positioned(
-              top: 0,
-              right: MediaQuery.of(context).size.width * _sidebarAnimation.value * -1,
-              bottom: 0,
-              child: ChatSidebar(
-                onClose: _closeSidebar,
-                onNewChat: _startNewChat,
-                onConversationTap: _loadConversation,
-                onConversationDelete: _deleteConversation,
-                chatSessions: _chatSessions,
-              ),
-            ),
+            ],
           ),
-        ],
+        ),
       ),
     );
   }
@@ -416,7 +576,11 @@ class _ChatMessage {
   final String text;
   final bool isUser;
   final bool isTyping;
-  _ChatMessage({required this.text, required this.isUser, this.isTyping = false});
+  _ChatMessage({
+    required this.text,
+    required this.isUser,
+    this.isTyping = false,
+  });
 }
 
 class _TypingIndicator extends StatefulWidget {
@@ -454,7 +618,10 @@ class _TypingIndicatorState extends State<_TypingIndicator>
           children: List.generate(3, (i) {
             final delay = i / 3;
             final value = ((_controller.value - delay) % 1.0).clamp(0.0, 1.0);
-            final opacity = (value < 0.5 ? value * 2 : (1 - value) * 2).clamp(0.3, 1.0);
+            final opacity = (value < 0.5 ? value * 2 : (1 - value) * 2).clamp(
+              0.3,
+              1.0,
+            );
             return Padding(
               padding: const EdgeInsets.symmetric(horizontal: 3),
               child: Opacity(

@@ -102,6 +102,84 @@ void main() {
       expect(find.text('4 · 4 · 4 · 4 second rhythm'), findsOneWidget);
     });
   });
+
+  testWidgets('a guided session completes, repeats, and can be ended', (
+    tester,
+  ) async {
+    tester.view.devicePixelRatio = 1;
+    tester.view.physicalSize = const Size(320, 640);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    addTearDown(tester.view.resetPhysicalSize);
+    const quickExercise = BreathingExercise(
+      title: 'Quick test breath',
+      shortDuration: '1 second',
+      focusArea: 'Calm',
+      description: 'One gentle breath.',
+      preparation: 'Sit comfortably.',
+      tip: 'Breathe softly.',
+      imageAsset: 'assets/images/breathing.svg',
+      color: Color(0xFF535394),
+      cycles: 1,
+      phases: [
+        BreathPhase(
+          action: BreathAction.inhale,
+          label: 'Breathe in',
+          instruction: 'Inhale gently',
+          seconds: 1,
+          startScale: 0.62,
+          endScale: 1,
+        ),
+      ],
+    );
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Builder(
+          builder:
+              (context) => Scaffold(
+                body: TextButton(
+                  onPressed:
+                      () => Navigator.of(context).push(
+                        MaterialPageRoute(
+                          builder:
+                              (_) => const GuidedBreathingScreen(
+                                exercise: quickExercise,
+                              ),
+                        ),
+                      ),
+                  child: const Text('Open exercise'),
+                ),
+              ),
+        ),
+      ),
+    );
+    await tester.tap(find.text('Open exercise'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Begin'));
+    for (var i = 0; i < 3; i++) {
+      await tester.pump(const Duration(seconds: 1));
+    }
+    await tester.pump(const Duration(seconds: 1));
+    await tester.pump(const Duration(seconds: 1));
+    await tester.pump();
+    expect(find.text('You completed the practice.'), findsOneWidget);
+
+    await tester.ensureVisible(find.text('Repeat exercise'));
+    await tester.tap(find.text('Repeat exercise'));
+    await tester.pump();
+    expect(find.text('Begin'), findsOneWidget);
+
+    await tester.tap(find.text('Begin'));
+    for (var i = 0; i < 3; i++) {
+      await tester.pump(const Duration(seconds: 1));
+    }
+    await tester.tap(find.text('End'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('End session'));
+    await tester.pumpAndSettle();
+    expect(find.text('Open exercise'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
 }
 
 List<int> _patternFor(String title) {

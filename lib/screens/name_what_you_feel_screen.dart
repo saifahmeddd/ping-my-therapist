@@ -7,6 +7,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:ping_my_therapist/services/patient_link_service.dart';
 import 'package:ping_my_therapist/widgets/custom_back_button.dart';
+import 'package:ping_my_therapist/widgets/pullable_section_header.dart';
 
 class NameWhatYouFeelScreen extends StatefulWidget {
   const NameWhatYouFeelScreen({super.key});
@@ -193,6 +194,7 @@ class _NameWhatYouFeelScreenState extends State<NameWhatYouFeelScreen> {
   }
 
   void _goBack() {
+    if (_saving) return;
     if (_complete || _step == 0) {
       Navigator.of(context).pop();
       return;
@@ -231,29 +233,35 @@ class _NameWhatYouFeelScreenState extends State<NameWhatYouFeelScreen> {
     final mood = _moods[_selectedMood];
     final user = FirebaseAuth.instance.currentUser;
 
-    if (user != null) {
-      try {
-        final therapistUid = await PatientLinkService().getTherapistUid();
-        final payload = <String, dynamic>{
-          'userId': user.uid,
-          'moods': [mood.storedMood],
-          'displayMood': mood.label,
-          'moodScale': _selectedMood + 1,
-          'emotions': _selectedEmotions.toList(),
-          'factors': _selectedInfluences.toList(),
-          'source': 'name_what_you_feel',
-          'timestamp': FieldValue.serverTimestamp(),
-        };
-        final note = _noteController.text.trim();
-        if (note.isNotEmpty) payload['note'] = note;
-        if (therapistUid != null) payload['therapistUid'] = therapistUid;
+    if (user == null) {
+      _showMessage('Sign in to save your reflection.');
+      setState(() => _saving = false);
+      return;
+    }
 
-        await FirebaseFirestore.instance
-            .collection('mood_checkins')
-            .add(payload);
-      } catch (_) {
-        // Reflection remains useful offline; saving should not block completion.
+    try {
+      final therapistUid = await PatientLinkService().getTherapistUid();
+      final payload = <String, dynamic>{
+        'userId': user.uid,
+        'moods': [mood.storedMood],
+        'displayMood': mood.label,
+        'moodScale': _selectedMood + 1,
+        'emotions': _selectedEmotions.toList(),
+        'factors': _selectedInfluences.toList(),
+        'source': 'name_what_you_feel',
+        'timestamp': FieldValue.serverTimestamp(),
+      };
+      final note = _noteController.text.trim();
+      if (note.isNotEmpty) payload['note'] = note;
+      if (therapistUid != null) payload['therapistUid'] = therapistUid;
+
+      await FirebaseFirestore.instance.collection('mood_checkins').add(payload);
+    } catch (_) {
+      if (mounted) {
+        _showMessage('Could not save your reflection. Please try again.');
+        setState(() => _saving = false);
       }
+      return;
     }
 
     if (!mounted) return;
@@ -273,106 +281,87 @@ class _NameWhatYouFeelScreenState extends State<NameWhatYouFeelScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: _purple,
-      body: SafeArea(
-        child: Column(
-          children: [
-            _buildHeader(),
-            Expanded(
-              child: Container(
-                width: double.infinity,
-                decoration: const BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.only(
-                    topLeft: Radius.circular(36),
-                    topRight: Radius.circular(36),
+    return PopScope(
+      canPop: !_saving,
+      child: AnnotatedRegion<SystemUiOverlayStyle>(
+        value: SystemUiOverlayStyle.light,
+        child: Scaffold(
+          backgroundColor: _purple,
+          body: SafeArea(
+            child: Column(
+              children: [
+                _buildHeader(),
+                Expanded(
+                  child: Container(
+                    width: double.infinity,
+                    decoration: const BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.only(
+                        topLeft: Radius.circular(30),
+                        topRight: Radius.circular(30),
+                      ),
+                    ),
+                    child: AnimatedSwitcher(
+                      duration: const Duration(milliseconds: 320),
+                      switchInCurve: Curves.easeOutCubic,
+                      switchOutCurve: Curves.easeInCubic,
+                      transitionBuilder:
+                          (child, animation) => FadeTransition(
+                            opacity: animation,
+                            child: SlideTransition(
+                              position: Tween<Offset>(
+                                begin: const Offset(0.04, 0),
+                                end: Offset.zero,
+                              ).animate(animation),
+                              child: child,
+                            ),
+                          ),
+                      child:
+                          _complete
+                              ? _buildCompletion()
+                              : _buildStep(key: ValueKey(_step)),
+                    ),
                   ),
                 ),
-                child: AnimatedSwitcher(
-                  duration: const Duration(milliseconds: 320),
-                  switchInCurve: Curves.easeOutCubic,
-                  switchOutCurve: Curves.easeInCubic,
-                  transitionBuilder:
-                      (child, animation) => FadeTransition(
-                        opacity: animation,
-                        child: SlideTransition(
-                          position: Tween<Offset>(
-                            begin: const Offset(0.04, 0),
-                            end: Offset.zero,
-                          ).animate(animation),
-                          child: child,
-                        ),
-                      ),
-                  child:
-                      _complete
-                          ? _buildCompletion()
-                          : _buildStep(key: ValueKey(_step)),
-                ),
-              ),
+              ],
             ),
-          ],
+          ),
         ),
       ),
     );
   }
 
   Widget _buildHeader() {
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 22, 22, 24),
-      child: Row(
-        children: [
-          CustomBackButton(
-            onPressed: _goBack,
-            iconColor: Colors.white,
-            iconSize: 24,
-          ),
-          const SizedBox(width: 14),
-          const Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'Name What You Feel',
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontFamily: 'Quicksand',
-                    fontSize: 24,
-                    fontWeight: FontWeight.w600,
-                    letterSpacing: -0.5,
-                  ),
-                ),
-                SizedBox(height: 3),
-                Text(
-                  'A quiet moment to understand what is here.',
-                  style: TextStyle(
-                    color: Color(0xFFE9E9FF),
-                    fontFamily: 'General Sans',
-                    fontSize: 12,
-                  ),
-                ),
-              ],
-            ),
-          ),
-          if (!_complete)
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 7),
-              decoration: BoxDecoration(
-                color: Colors.white.withValues(alpha: 0.14),
-                borderRadius: BorderRadius.circular(20),
-              ),
-              child: Text(
-                '${_step + 1} of 3',
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontFamily: 'General Sans',
-                  fontSize: 11,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-            ),
-        ],
+    return PullableSectionHeader(
+      title: 'Name What You Feel',
+      subtitle: 'A quiet moment to understand what is here.',
+      leading: CustomBackButton(
+        onPressed: _goBack,
+        iconColor: Colors.white,
+        iconSize: 24,
       ),
+      trailing:
+          _complete
+              ? null
+              : Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 11,
+                  vertical: 7,
+                ),
+                decoration: BoxDecoration(
+                  color: Colors.white.withValues(alpha: 0.14),
+                  borderRadius: BorderRadius.circular(20),
+                ),
+                child: Text(
+                  '${_step + 1} of 3',
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontFamily: 'General Sans',
+                    fontSize: 11,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ),
     );
   }
 
